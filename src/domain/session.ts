@@ -61,3 +61,14 @@ export function formatFocusTotal(totalMillis: number): string {
 export function pluralize(count: number, singular: string): string {
   return `${count} ${singular}${count === 1 ? '' : 's'}`;
 }
+
+/** Hours and minutes, the way a person says a duration out loud. */
+export function formatFocusHm(totalMillis: number): string {
+  const minutes = Math.max(0, Math.round(totalMillis / 60_000));
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+}

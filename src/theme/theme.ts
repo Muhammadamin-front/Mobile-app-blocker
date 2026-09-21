@@ -21,6 +21,8 @@ export interface Theme {
   shadow: string;
   overlay: string;
   inverseText: string;
+  /** Chart series hue, picked per surface so marks stay inside the readable band. */
+  chartSeries: string;
 }
 
 export const spacing = {
@@ -65,6 +67,7 @@ export const lightTheme: Theme = {
   shadow: '#29234D',
   overlay: '#11131CB3',
   inverseText: '#FFFFFF',
+  chartSeries: '#6758E7',
 };
 
 export const darkTheme: Theme = {
@@ -90,4 +93,5 @@ export const darkTheme: Theme = {
   shadow: '#000000',
   overlay: '#05060ACC',
   inverseText: '#11121A',
+  chartSeries: '#7E70F4',
 };

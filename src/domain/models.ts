@@ -47,3 +47,27 @@ export interface StartSessionInput {
   endTimestamp: number;
   blockedApps: InstalledApp[];
 }
+
+export type TrendRange = 'week' | 'month' | 'year';
+
+export interface FocusBucket {
+  label: string;
+  startTimestamp: number;
+  focusMillis: number;
+}
+
+export interface AppAttempt {
+  packageName: string;
+  appName: string;
+  attempts: number;
+}
+
+export interface FocusTrends {
+  range: TrendRange;
+  windowStart: number;
+  buckets: FocusBucket[];
+  totalFocusMillis: number;
+  completedSessions: number;
+  blockedAttempts: number;
+  topApps: AppAttempt[];
+}

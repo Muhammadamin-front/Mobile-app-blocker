@@ -151,6 +151,11 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
 
   /** Drops apps the user has uninstalled since choosing them so the list never goes stale. */
   @ReactMethod
+  fun getTrends(range: String?, promise: Promise) = background(promise) {
+    database.getTrends(range).toWritableMap()
+  }
+
+  @ReactMethod
   fun getSelectedApps(promise: Promise) = background(promise) {
     val stored = database.getSelectedApps()
     val available = stored.filter { isLaunchable(it.packageName) }
@@ -301,6 +306,32 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     putString("packageName", packageName)
     putString("appName", appName)
     iconBase64?.let { putString("iconBase64", it) }
+  }
+
+  private fun FocusTrends.toWritableMap(): WritableMap = Arguments.createMap().apply {
+    putString("range", range)
+    putDouble("windowStart", windowStart.toDouble())
+    putDouble("totalFocusMillis", totalFocusMillis.toDouble())
+    putInt("completedSessions", completedSessions)
+    putInt("blockedAttempts", blockedAttempts)
+    putArray("buckets", Arguments.createArray().apply {
+      buckets.forEach { bucket ->
+        pushMap(Arguments.createMap().apply {
+          putString("label", bucket.label)
+          putDouble("startTimestamp", bucket.startTimestamp.toDouble())
+          putDouble("focusMillis", bucket.focusMillis.toDouble())
+        })
+      }
+    })
+    putArray("topApps", Arguments.createArray().apply {
+      topApps.forEach { app ->
+        pushMap(Arguments.createMap().apply {
+          putString("packageName", app.packageName)
+          putString("appName", app.appName)
+          putInt("attempts", app.attempts)
+        })
+      }
+    })
   }
 
   private fun StoredSession.toWritableMap(): WritableMap = Arguments.createMap().apply {

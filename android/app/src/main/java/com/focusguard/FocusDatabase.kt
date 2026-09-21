@@ -51,6 +51,7 @@ class FocusDatabase private constructor(context: Context) :
         blocked_apps TEXT NOT NULL,
         status TEXT NOT NULL,
         completed_reason TEXT,
+        ended_at INTEGER,
         created_at INTEGER NOT NULL
       )""",
     )
@@ -74,7 +75,14 @@ class FocusDatabase private constructor(context: Context) :
     )
   }
 
-  override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+  override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+    if (oldVersion < 2) {
+      // ended_at records when a session actually stopped protecting time, which the
+      // statistics need; completed rows can be backfilled from their planned end.
+      db.execSQL("ALTER TABLE sessions ADD COLUMN ended_at INTEGER")
+      db.execSQL("UPDATE sessions SET ended_at = end_timestamp WHERE status = 'COMPLETED'")
+    }
+  }
 
   @Synchronized
   fun startSession(
@@ -123,6 +131,7 @@ class FocusDatabase private constructor(context: Context) :
     val values = ContentValues().apply {
       put("status", "STOPPED")
       put("completed_reason", "user")
+      put("ended_at", System.currentTimeMillis())
     }
     writableDatabase.update("sessions", values, "id = ?", arrayOf(current.id))
     return getSession(current.id)
@@ -200,7 +209,10 @@ class FocusDatabase private constructor(context: Context) :
         if (nextStatus != oldStatus) {
           val values = ContentValues().apply {
             put("status", nextStatus)
-            if (nextStatus == "COMPLETED") put("completed_reason", "expired")
+            if (nextStatus == "COMPLETED") {
+              put("completed_reason", "expired")
+              put("ended_at", minOf(endWall, nowWall))
+            }
           }
           db.update("sessions", values, "id = ?", arrayOf(id))
         }
@@ -243,14 +255,30 @@ class FocusDatabase private constructor(context: Context) :
   fun getStatistics(): Map<String, Any> {
     normalizeSessions()
     var completedSessions = 0
+    readableDatabase.rawQuery(
+      "SELECT COUNT(*) FROM sessions WHERE status = 'COMPLETED'",
+      null,
+    ).use { cursor -> if (cursor.moveToFirst()) completedSessions = cursor.getInt(0) }
+
+    // Measured the same way the trends are, so the all-time figure can never
+    // contradict the window shown right above it.
+    val now = System.currentTimeMillis()
     var totalFocusMillis = 0L
     readableDatabase.rawQuery(
-      "SELECT COUNT(*), COALESCE(SUM(duration_millis), 0) FROM sessions WHERE status = 'COMPLETED'",
+      "SELECT status, start_timestamp, end_timestamp, ended_at FROM sessions",
       null,
     ).use { cursor ->
-      if (cursor.moveToFirst()) {
-        completedSessions = cursor.getInt(0)
-        totalFocusMillis = cursor.getLong(1)
+      while (cursor.moveToNext()) {
+        val span = FocusTrendMath.spanOf(
+          status = cursor.getString(0),
+          startTimestamp = cursor.getLong(1),
+          endTimestamp = cursor.getLong(2),
+          endedAt = if (cursor.isNull(3)) null else cursor.getLong(3),
+          nowMillis = now,
+        )
+        if (span != null) {
+          totalFocusMillis += span.endTimestamp - span.startTimestamp
+        }
       }
     }
     val attempts = mutableListOf<Map<String, Any>>()
@@ -279,6 +307,77 @@ class FocusDatabase private constructor(context: Context) :
   }
 
   /** Icons are never persisted: they are large, they change with themes, and the launcher owns them. */
+  @Synchronized
+  fun getTrends(rawRange: String?): FocusTrends {
+    normalizeSessions()
+    val range = FocusTrendMath.normalizeRange(rawRange)
+    val now = System.currentTimeMillis()
+    val edges = FocusTrendMath.edges(now, range)
+    val windowStart = edges.first()
+    val windowEnd = edges.last()
+
+    val spans = mutableListOf<FocusSpan>()
+    readableDatabase.rawQuery(
+      """SELECT status, start_timestamp, end_timestamp, ended_at FROM sessions
+         WHERE end_timestamp >= ? AND start_timestamp <= ?""",
+      arrayOf(windowStart.toString(), windowEnd.toString()),
+    ).use { cursor ->
+      while (cursor.moveToNext()) {
+        val endedAt = if (cursor.isNull(3)) null else cursor.getLong(3)
+        FocusTrendMath.spanOf(
+          status = cursor.getString(0),
+          startTimestamp = cursor.getLong(1),
+          endTimestamp = cursor.getLong(2),
+          endedAt = endedAt,
+          nowMillis = now,
+        )?.let(spans::add)
+      }
+    }
+
+    val totals = FocusTrendMath.distribute(spans, edges)
+    val buckets = totals.mapIndexed { index, focusMillis ->
+      FocusBucket(
+        label = FocusTrendMath.label(edges[index], range),
+        startTimestamp = edges[index],
+        focusMillis = focusMillis,
+      )
+    }
+
+    var completedSessions = 0
+    readableDatabase.rawQuery(
+      "SELECT COUNT(*) FROM sessions WHERE status = 'COMPLETED' AND end_timestamp >= ?",
+      arrayOf(windowStart.toString()),
+    ).use { cursor -> if (cursor.moveToFirst()) completedSessions = cursor.getInt(0) }
+
+    var blockedAttempts = 0
+    readableDatabase.rawQuery(
+      "SELECT COUNT(*) FROM block_attempts WHERE attempted_at >= ?",
+      arrayOf(windowStart.toString()),
+    ).use { cursor -> if (cursor.moveToFirst()) blockedAttempts = cursor.getInt(0) }
+
+    val topApps = mutableListOf<AppAttempt>()
+    readableDatabase.rawQuery(
+      """SELECT package_name, MAX(app_name), COUNT(*) AS attempts FROM block_attempts
+         WHERE attempted_at >= ? GROUP BY package_name ORDER BY attempts DESC, package_name ASC
+         LIMIT 5""",
+      arrayOf(windowStart.toString()),
+    ).use { cursor ->
+      while (cursor.moveToNext()) {
+        topApps += AppAttempt(cursor.getString(0), cursor.getString(1), cursor.getInt(2))
+      }
+    }
+
+    return FocusTrends(
+      range = range,
+      buckets = buckets,
+      windowStart = windowStart,
+      totalFocusMillis = totals.sum(),
+      completedSessions = completedSessions,
+      blockedAttempts = blockedAttempts,
+      topApps = topApps,
+    )
+  }
+
   @Synchronized
   fun setSelectedApps(apps: List<StoredApp>) =
     setSetting(SELECTED_APPS, appsToJson(apps.map { it.copy(iconBase64 = null) }))
@@ -336,7 +435,7 @@ class FocusDatabase private constructor(context: Context) :
 
   companion object {
     private const val DATABASE_NAME = "focus_guard.db"
-    private const val DATABASE_VERSION = 1
+    private const val DATABASE_VERSION = 2
     const val SELECTED_APPS = "selected_apps"
     const val ONBOARDING_COMPLETED = "onboarding_completed"
     const val THEME_PREFERENCE = "theme_preference"

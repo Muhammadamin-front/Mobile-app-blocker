@@ -14,11 +14,13 @@ import {IconMap, missingIconPackages, withIcons} from '../domain/icons';
 import {
   AppSettings,
   FocusSession,
+  FocusTrends,
   FocusStats,
   InstalledApp,
   PermissionStatus,
   StartSessionInput,
   ThemePreference,
+  TrendRange,
 } from '../domain/models';
 import {appBlockingService} from '../services/nativeAppBlockingService';
 
@@ -27,6 +29,16 @@ const emptyStats: FocusStats = {
   totalFocusMillis: 0,
   totalBlockedAttempts: 0,
   attemptsByPackage: [],
+};
+
+const emptyTrends: FocusTrends = {
+  range: 'week',
+  windowStart: 0,
+  buckets: [],
+  totalFocusMillis: 0,
+  completedSessions: 0,
+  blockedAttempts: 0,
+  topApps: [],
 };
 
 interface AppStoreValue {
@@ -38,10 +50,14 @@ interface AppStoreValue {
   activeSession: FocusSession | null;
   history: FocusSession[];
   stats: FocusStats;
+  trends: FocusTrends;
+  trendRange: TrendRange;
+  trendsLoading: boolean;
   permission: PermissionStatus;
   onboardingCompleted: boolean;
   themePreference: ThemePreference;
   refresh(): Promise<void>;
+  setTrendRange(range: TrendRange): void;
   loadInstalledApps(): Promise<void>;
   setSelectedApps(apps: InstalledApp[]): Promise<void>;
   startSession(input: StartSessionInput): Promise<void>;
@@ -64,6 +80,9 @@ export function AppStoreProvider({children}: PropsWithChildren) {
   const [activeSession, setActiveSession] = useState<FocusSession | null>(null);
   const [history, setHistory] = useState<FocusSession[]>([]);
   const [stats, setStats] = useState<FocusStats>(emptyStats);
+  const [trends, setTrends] = useState<FocusTrends>(emptyTrends);
+  const [trendRange, setTrendRange] = useState<TrendRange>('week');
+  const [trendsLoading, setTrendsLoading] = useState(true);
   const [permission, setPermission] = useState<PermissionStatus>({
     accessibilityEnabled: false,
     ready: false,
@@ -168,6 +187,29 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       .catch(() => undefined);
   }, [iconTargets, icons]);
 
+  // Trends are re-read on every range change and whenever a session ends, so the
+  // chart never shows a window the sessions list has already moved past.
+  useEffect(() => {
+    let cancelled = false;
+    setTrendsLoading(true);
+    appBlockingService
+      .getTrends(trendRange)
+      .then(next => {
+        if (!cancelled) {
+          setTrends(next);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) {
+          setTrendsLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [history, stats, trendRange]);
+
   const loadInstalledApps = useCallback(async () => {
     if (installedApps.length) {
       return;
@@ -247,6 +289,7 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       requestedIcons.current.clear();
       setHistory([]);
       setStats(emptyStats);
+      setTrends(emptyTrends);
       setSettings({onboardingCompleted: false, themePreference: 'system'});
     });
     setBusy(false);
@@ -275,6 +318,10 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       activeSession: decoratedSession,
       history,
       stats,
+      trends,
+      trendRange,
+      trendsLoading,
+      setTrendRange,
       permission,
       onboardingCompleted: settings.onboardingCompleted,
       themePreference: settings.themePreference,
@@ -307,6 +354,9 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       startSession,
       stats,
       stopSession,
+      trendRange,
+      trends,
+      trendsLoading,
       updateSelectedApps,
       setTheme,
     ],

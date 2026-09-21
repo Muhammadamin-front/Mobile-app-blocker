@@ -85,6 +85,28 @@ Before publishing:
 
 Accessibility approval is a policy review, not a technical guarantee. Google Play can reject uses it considers insufficiently justified, so the listing, disclosure, demo video, and implementation must remain aligned.
 
+## Statistics
+
+The Progress tab reads one native query per range. `getTrends(week|month|year)`
+returns the bucketed focus time, the counts for that window, and the five apps
+opened against the block list most often in it.
+
+- Buckets are built in local time at query time, so a time-zone change moves the
+  boundaries with the user instead of leaving the chart on the old offset.
+- A session is split across the days or months it actually covers rather than
+  being credited entirely to the day it started.
+- Focus time is measured, not planned: `ended_at` records when a session really
+  stopped protecting time, a running session counts up to now, and a scheduled
+  one counts for nothing. The all-time total uses the same rule, so it can never
+  contradict the window shown above it.
+- The bucketing arithmetic lives in `FocusTrendMath`, free of Android and
+  SQLite, and is unit tested directly.
+
+The chart is one series on one baseline: thin bars with a 2px surface gap, a
+recessive hairline grid, labels placed from a measured layout so a dense month
+never clips them, and a tap readout that supplements the axis rather than being
+the only way to read a value.
+
 ## Reliability behavior
 
 - The native database is written before a session is returned to React Native.
@@ -162,6 +184,9 @@ Run on at least one AOSP/Pixel device and representative Samsung/Xiaomi devices 
 - [ ] Revoke Accessibility during a session; verify Android accepts the revocation and FocusGuard reports it disabled on return.
 - [ ] Uninstall a blocked app; verify FocusGuard remains stable and history is readable.
 - [ ] Test light/dark/system themes and Reset local data.
+- [ ] Open Progress and switch Week/Month/Year; confirm the axis labels are never clipped, tapping a bar names it, and the all-time total is consistent with the selected window.
+- [ ] Run a session across midnight and confirm it is split across both days.
+- [ ] Upgrade over an older install and confirm the `ended_at` migration keeps existing history readable.
 - [ ] Inspect the release manifest and confirm it has no `INTERNET` or `QUERY_ALL_PACKAGES` permission.
 
 ## Release signing

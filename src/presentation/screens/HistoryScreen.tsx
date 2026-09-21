@@ -1,24 +1,35 @@
-import React from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 
-import {formatMinutes} from '../../domain/session';
+import {TrendRange} from '../../domain/models';
+import {formatFocusHm, formatMinutes, pluralize} from '../../domain/session';
 import {useAppStore} from '../../state/AppStore';
-import {spacing, Theme} from '../../theme/theme';
+import {radii, spacing, Theme} from '../../theme/theme';
+import {FocusChart} from '../FocusChart';
 import {Card, EmptyState, ScreenHeader, SectionTitle, StatusBadge} from '../components';
 
-function formatTotalFocus(milliseconds: number): string {
-  const minutes = Math.round(milliseconds / 60_000);
-  if (minutes < 60) {
-    return `${minutes}m`;
-  }
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
-}
+const RANGES: Array<{id: TrendRange; label: string; caption: string}> = [
+  {id: 'week', label: 'Week', caption: 'Last 7 days'},
+  {id: 'month', label: 'Month', caption: 'Last 30 days'},
+  {id: 'year', label: 'Year', caption: 'Last 12 months'},
+];
 
 export function HistoryScreen({theme}: {theme: Theme}) {
-  const {history, stats} = useAppStore();
-  const topAttempts = stats.attemptsByPackage.slice(0, 3);
+  const {history, stats, trends, trendRange, trendsLoading, setTrendRange} = useAppStore();
+  const topAttempts = trends.topApps;
+  const [selectedBucket, setSelectedBucket] = useState<number | null>(null);
+  const range = RANGES.find(item => item.id === trendRange) ?? RANGES[0];
+
+  useEffect(() => setSelectedBucket(null), [trendRange]);
+
+  const peakIndex = trends.buckets.reduce(
+    (best, bucket, index) =>
+      bucket.focusMillis > (trends.buckets[best]?.focusMillis ?? -1) ? index : best,
+    -1,
+  );
+  const shown = selectedBucket ?? (peakIndex >= 0 ? peakIndex : null);
+  const shownBucket = shown === null ? null : trends.buckets[shown];
+  const hasFocus = trends.totalFocusMillis > 0;
 
   return (
     <ScrollView
@@ -31,11 +42,37 @@ export function HistoryScreen({theme}: {theme: Theme}) {
         subtitle="A quiet record of the time you protected and the impulses you outlasted."
       />
 
+      <View style={[styles.rangeRow, {backgroundColor: theme.surfaceMuted, borderColor: theme.border}]}>
+        {RANGES.map(item => {
+          const active = item.id === trendRange;
+          return (
+            <Pressable
+              key={item.id}
+              accessibilityRole="tab"
+              accessibilityState={{selected: active}}
+              onPress={() => setTrendRange(item.id)}
+              style={[
+                styles.rangeTab,
+                active && {backgroundColor: theme.surface, borderColor: theme.border},
+              ]}>
+              <Text
+                style={[
+                  styles.rangeLabel,
+                  {color: active ? theme.text : theme.textMuted},
+                  active && styles.rangeLabelActive,
+                ]}>
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <Card theme={theme} elevated style={styles.heroCard}>
         <View style={styles.heroTop}>
           <View>
-            <Text style={[styles.heroLabel, {color: theme.textMuted}]}>TOTAL FOCUS TIME</Text>
-            <Text style={[styles.heroValue, {color: theme.text}]}>{formatTotalFocus(stats.totalFocusMillis)}</Text>
+            <Text style={[styles.heroLabel, {color: theme.textMuted}]}>{range.caption.toUpperCase()}</Text>
+            <Text style={[styles.heroValue, {color: theme.text}]}>{formatFocusHm(trends.totalFocusMillis)}</Text>
           </View>
           <View style={[styles.heroIcon, {backgroundColor: theme.primarySoft}]}>
             <View style={[styles.heroRing, {borderColor: theme.primary}]}>
@@ -46,20 +83,53 @@ export function HistoryScreen({theme}: {theme: Theme}) {
         <View style={[styles.heroDivider, {backgroundColor: theme.border}]} />
         <View style={styles.metricRow}>
           <View style={styles.metric}>
-            <Text style={[styles.metricValue, {color: theme.text}]}>{stats.completedSessions}</Text>
+            <Text style={[styles.metricValue, {color: theme.text}]}>{trends.completedSessions}</Text>
             <Text style={[styles.metricLabel, {color: theme.textMuted}]}>Completed</Text>
           </View>
           <View style={[styles.metricDivider, {backgroundColor: theme.border}]} />
           <View style={styles.metric}>
-            <Text style={[styles.metricValue, {color: theme.text}]}>{stats.totalBlockedAttempts}</Text>
+            <Text style={[styles.metricValue, {color: theme.text}]}>{trends.blockedAttempts}</Text>
             <Text style={[styles.metricLabel, {color: theme.textMuted}]}>Distractions stopped</Text>
           </View>
         </View>
+        <Text style={[styles.heroFootnote, {color: theme.textMuted}]}>
+          {formatFocusHm(stats.totalFocusMillis)} protected all time
+        </Text>
       </Card>
+
+      <View style={styles.sectionBlock}>
+        <SectionTitle theme={theme}>Focus time</SectionTitle>
+        <Card theme={theme} style={[styles.chartCard, trendsLoading && styles.chartLoading]}>
+          <View style={styles.readout}>
+            <Text style={[styles.readoutValue, {color: theme.text}]}>
+              {shownBucket ? formatFocusHm(shownBucket.focusMillis) : '0m'}
+            </Text>
+            <Text style={[styles.readoutLabel, {color: theme.textMuted}]}>
+              {!hasFocus
+                ? 'No focus time in this window yet'
+                : shownBucket
+                  ? `${selectedBucket === null ? 'Best so far · ' : ''}${new Date(
+                      shownBucket.startTimestamp,
+                    ).toLocaleDateString(undefined, {
+                      month: 'short',
+                      ...(trendRange === 'year' ? {year: 'numeric'} : {day: 'numeric'}),
+                    })}`
+                  : ''}
+            </Text>
+          </View>
+          <FocusChart
+            theme={theme}
+            buckets={trends.buckets}
+            range={trendRange}
+            selectedIndex={selectedBucket}
+            onSelect={setSelectedBucket}
+          />
+        </Card>
+      </View>
 
       {topAttempts.length ? (
         <View style={styles.sectionBlock}>
-          <SectionTitle theme={theme} detail="Most resisted">Top distractions</SectionTitle>
+          <SectionTitle theme={theme} detail={range.caption}>Top distractions</SectionTitle>
           <Card theme={theme} style={styles.attemptsCard}>
             {topAttempts.map((attempt, index) => {
               const max = topAttempts[0]?.attempts || 1;
@@ -115,7 +185,7 @@ export function HistoryScreen({theme}: {theme: Theme}) {
                 </View>
                 <Text style={[styles.sessionDuration, {color: theme.text}]}>{formatMinutes(durationMinutes)}</Text>
                 <View style={styles.sessionMetaRow}>
-                  <Text style={[styles.sessionMeta, {color: theme.textMuted}]}>{session.blockedApps.length} apps quieted</Text>
+                  <Text style={[styles.sessionMeta, {color: theme.textMuted}]}>{pluralize(session.blockedApps.length, 'app')} quieted</Text>
                   <View style={[styles.metaDot, {backgroundColor: theme.textSubtle}]} />
                   <Text style={[styles.sessionMeta, {color: theme.textMuted}]}>{session.blockedAttempts} attempts stopped</Text>
                 </View>
@@ -138,6 +208,31 @@ export function HistoryScreen({theme}: {theme: Theme}) {
 }
 
 const styles = StyleSheet.create({
+  rangeRow: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: radii.md,
+    padding: 4,
+    marginBottom: spacing.lg,
+    gap: 4,
+  },
+  rangeTab: {
+    flex: 1,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  rangeLabel: {fontSize: 14, fontWeight: '600'},
+  rangeLabelActive: {fontWeight: '800'},
+  heroFootnote: {fontSize: 12, marginTop: spacing.md},
+  chartCard: {paddingTop: spacing.md},
+  chartLoading: {opacity: 0.6},
+  readout: {marginBottom: spacing.md},
+  readoutValue: {fontSize: 26, fontWeight: '800', letterSpacing: -0.5},
+  readoutLabel: {fontSize: 12, fontWeight: '600', marginTop: 2},
   content: {paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xxxl},
   heroCard: {marginBottom: spacing.xxl, padding: spacing.xl},
   heroTop: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},

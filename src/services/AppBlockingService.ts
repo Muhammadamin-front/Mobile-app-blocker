@@ -2,11 +2,13 @@ import {IconMap} from '../domain/icons';
 import {
   AppSettings,
   FocusSession,
+  FocusTrends,
   FocusStats,
   InstalledApp,
   PermissionStatus,
   StartSessionInput,
   ThemePreference,
+  TrendRange,
 } from '../domain/models';
 
 export interface AppBlockingService {
@@ -21,6 +23,7 @@ export interface AppBlockingService {
   setBlockedApps(apps: InstalledApp[]): Promise<void>;
   getHistory(): Promise<FocusSession[]>;
   getStatistics(): Promise<FocusStats>;
+  getTrends(range: TrendRange): Promise<FocusTrends>;
   getSettings(): Promise<AppSettings>;
   completeOnboarding(): Promise<void>;
   setThemePreference(theme: ThemePreference): Promise<void>;
