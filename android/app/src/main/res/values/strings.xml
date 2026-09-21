@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">FocusGuard</string>
+    <string name="accessibility_service_label">FocusGuard app blocking</string>
+    <string name="accessibility_service_description">Detects when an app from your active, locally stored block list is opened and shows the FocusGuard block screen. It does not inspect screen content.</string>
+    <string name="block_mode_label">FOCUS MODE</string>
+    <string name="block_title">Stay with your intention.</string>
+    <string name="block_app_message">%1$s is currently blocked.</string>
+    <string name="block_remaining_label">REMAINING</string>
+    <string name="block_initial_timer">00:00:00</string>
+    <string name="block_home_button">Back to Home</string>
 </resources>
