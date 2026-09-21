@@ -47,6 +47,9 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
         database.getSetting(FocusDatabase.LANGUAGE_PREFERENCE)
       }.getOrNull() ?: "system"
       applyLocale(stored)
+      // The alarm does not survive a reinstall or a cleared app, so it is re-armed
+      // whenever the module comes up rather than only when a schedule is edited.
+      runCatching { FocusScheduler.sync(context) }
     }
   }
 
@@ -160,6 +163,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
       val session = database.startSession(id, startTimestamp, endTimestamp, apps, strict)
       FocusAccessibilityService.invalidateCache()
       FocusNotifier.sync(context)
+      FocusScheduler.sync(context)
       session.toWritableMap()
     }
   }
@@ -206,6 +210,42 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   @ReactMethod
   fun getTrends(range: String?, promise: Promise) = background(promise) {
     database.getTrends(range).toWritableMap()
+  }
+
+  @ReactMethod
+  fun getSchedules(promise: Promise) = background(promise) {
+    Arguments.createArray().apply {
+      database.getSchedules().forEach { pushMap(it.toWritableMap()) }
+    }
+  }
+
+  @ReactMethod
+  fun saveSchedule(input: ReadableMap, promise: Promise) {
+    val schedule = StoredSchedule(
+      id = input.requireString("id"),
+      label = if (input.hasKey("label") && !input.isNull("label")) {
+        input.getString("label").orEmpty()
+      } else {
+        ""
+      },
+      days = input.requireInt("days"),
+      startMinute = input.requireInt("startMinute"),
+      durationMinutes = input.requireInt("durationMinutes"),
+      strict = input.hasKey("strict") && !input.isNull("strict") && input.getBoolean("strict"),
+      enabled = !input.hasKey("enabled") || input.isNull("enabled") || input.getBoolean("enabled"),
+    )
+    background(promise) {
+      database.saveSchedule(schedule)
+      FocusScheduler.sync(context)
+      null
+    }
+  }
+
+  @ReactMethod
+  fun deleteSchedule(id: String, promise: Promise) = background(promise) {
+    database.deleteSchedule(id)
+    FocusScheduler.sync(context)
+    null
   }
 
   @ReactMethod
@@ -351,6 +391,9 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   private fun ReadableMap.requireString(key: String): String =
     if (hasKey(key) && !isNull(key)) getString(key).orEmpty() else error("Missing $key.")
 
+  private fun ReadableMap.requireInt(key: String): Int =
+    if (hasKey(key) && !isNull(key)) getDouble(key).toInt() else error("Missing $key.")
+
   private fun ReadableMap.requireLong(key: String): Long =
     if (hasKey(key) && !isNull(key)) getDouble(key).toLong() else error("Missing $key.")
 
@@ -388,6 +431,16 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
         })
       }
     })
+  }
+
+  private fun StoredSchedule.toWritableMap(): WritableMap = Arguments.createMap().apply {
+    putString("id", id)
+    putString("label", label)
+    putInt("days", days)
+    putInt("startMinute", startMinute)
+    putInt("durationMinutes", durationMinutes)
+    putBoolean("strict", strict)
+    putBoolean("enabled", enabled)
   }
 
   private fun FocusTrends.toWritableMap(): WritableMap = Arguments.createMap().apply {

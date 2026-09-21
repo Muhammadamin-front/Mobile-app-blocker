@@ -3,6 +3,7 @@ import {IconMap} from '../domain/icons';
 import {
   AppSettings,
   FocusSession,
+  FocusSchedule,
   FocusTrends,
   FocusStats,
   InstalledApp,
@@ -33,6 +34,9 @@ export interface AppBlockingService {
   getHistory(): Promise<FocusSession[]>;
   getStatistics(): Promise<FocusStats>;
   getTrends(range: TrendRange): Promise<FocusTrends>;
+  getSchedules(): Promise<FocusSchedule[]>;
+  saveSchedule(schedule: FocusSchedule): Promise<void>;
+  deleteSchedule(id: string): Promise<void>;
   getSettings(): Promise<AppSettings>;
   completeOnboarding(): Promise<void>;
   setThemePreference(theme: ThemePreference): Promise<void>;

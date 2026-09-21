@@ -149,6 +149,24 @@ saved app list and a default duration, so the common case costs one tap.
 - It will not end a strict session: committing to something you cannot undo should
   take more than a shade tap.
 
+## Schedules
+
+A schedule is a row: which days, what time, how long, and whether it starts strict.
+It blocks the saved app list rather than carrying its own, so editing the list
+changes every schedule at once — which is what people mean by "my distractions".
+
+- Days are a bitmask, Monday at bit 0 through Sunday at bit 6, and the arithmetic
+  that answers "when does this fire next" lives in `ScheduleMath`, free of Android
+  and SQLite so it is unit tested directly rather than by waiting for a clock.
+- One inexact alarm is kept for the soonest upcoming start; when it fires, the
+  schedule that is due starts a session and the next alarm is armed. Inexact costs
+  the user no permission to grant, and a focus block that begins a minute late is
+  still a focus block.
+- A session already running wins: a schedule never interrupts focus that is under
+  way, and never ends a strict one.
+- The alarm is re-armed on boot, on every schedule edit, when a session starts, and
+  when the module initializes, so it survives a reinstall or a cleared app.
+
 ## Two languages
 
 The app ships in English and Uzbek, and the choice is one setting rather than two
@@ -269,6 +287,7 @@ Run on at least one AOSP/Pixel device and representative Samsung/Xiaomi devices 
 - [ ] Test light/dark/system themes and Reset local data.
 - [ ] Start a strict session and confirm there is no way to end it in the app, that the tile refuses too, and that Accessibility can still be disabled from Android settings.
 - [ ] Add the Quick Settings tile and confirm it starts, stops, and reports unavailable with no apps chosen.
+- [ ] Save a schedule a few minutes ahead, lock the phone, and confirm the session starts on its own; then confirm a second schedule does not interrupt it.
 - [ ] Switch the language and confirm the tab bar, both confirmation dialogs, the block screen, and the timer notification all follow it — including after force-stopping and reopening.
 - [ ] Start a session, leave the app, and confirm the countdown is readable in the status bar, the shade, and the lock screen, and that it never makes a sound.
 - [ ] End the session and confirm the notification and its status bar icon both disappear.

@@ -88,6 +88,7 @@
           <action android:name="android.intent.action.TIMEZONE_CHANGED" />
           <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
           <action android:name="com.focusguard.SESSION_DUE" />
+          <action android:name="com.focusguard.SCHEDULE_DUE" />
         </intent-filter>
       </receiver>
     </application>

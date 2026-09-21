@@ -6,6 +6,7 @@ import {IconMap, withoutIcons} from '../domain/icons';
 import {
   AppSettings,
   FocusSession,
+  FocusSchedule,
   FocusTrends,
   FocusStats,
   InstalledApp,
@@ -32,6 +33,9 @@ interface NativeFocusGuardModule {
   getHistory(): Promise<FocusSession[]>;
   getStatistics(): Promise<FocusStats>;
   getTrends(range: TrendRange): Promise<FocusTrends>;
+  getSchedules(): Promise<FocusSchedule[]>;
+  saveSchedule(schedule: FocusSchedule): Promise<void>;
+  deleteSchedule(id: string): Promise<void>;
   getSettings(): Promise<AppSettings>;
   completeOnboarding(): Promise<void>;
   setThemePreference(theme: ThemePreference): Promise<void>;
@@ -89,6 +93,9 @@ export const appBlockingService: AppBlockingService = {
   getHistory: () => getNativeModule().getHistory(),
   getStatistics: () => getNativeModule().getStatistics(),
   getTrends: range => getNativeModule().getTrends(range),
+  getSchedules: () => getNativeModule().getSchedules(),
+  saveSchedule: schedule => getNativeModule().saveSchedule(schedule),
+  deleteSchedule: id => getNativeModule().deleteSchedule(id),
   getSettings: () => getNativeModule().getSettings(),
   completeOnboarding: () => getNativeModule().completeOnboarding(),
   setThemePreference: theme =>

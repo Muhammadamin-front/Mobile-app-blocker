@@ -95,3 +95,14 @@ export interface ScreenTimeReport {
   totalMillis: number;
   apps: ScreenTimeApp[];
 }
+
+/** Monday is bit 0 through Sunday at bit 6, so a schedule stays one row. */
+export interface FocusSchedule {
+  id: string;
+  label: string;
+  days: number;
+  startMinute: number;
+  durationMinutes: number;
+  strict: boolean;
+  enabled: boolean;
+}

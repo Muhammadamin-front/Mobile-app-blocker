@@ -15,6 +15,17 @@ data class StoredApp(
   val iconBase64: String? = null,
 )
 
+data class StoredSchedule(
+  val id: String,
+  val label: String,
+  /** Monday is bit 0 through Sunday at bit 6. */
+  val days: Int,
+  val startMinute: Int,
+  val durationMinutes: Int,
+  val strict: Boolean,
+  val enabled: Boolean,
+)
+
 data class StoredSession(
   val id: String,
   val startTimestamp: Long,
@@ -70,6 +81,18 @@ class FocusDatabase private constructor(context: Context) :
     db.execSQL("CREATE INDEX idx_sessions_status ON sessions(status)")
     db.execSQL("CREATE INDEX idx_attempts_session ON block_attempts(session_id)")
     db.execSQL(
+      """CREATE TABLE schedules (
+        id TEXT PRIMARY KEY NOT NULL,
+        label TEXT NOT NULL,
+        days INTEGER NOT NULL,
+        start_minute INTEGER NOT NULL,
+        duration_minutes INTEGER NOT NULL,
+        strict INTEGER NOT NULL DEFAULT 0,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL
+      )""",
+    )
+    db.execSQL(
       """CREATE TABLE settings (
         setting_key TEXT PRIMARY KEY NOT NULL,
         setting_value TEXT NOT NULL
@@ -87,6 +110,20 @@ class FocusDatabase private constructor(context: Context) :
     if (oldVersion < 3) {
       // A strict session refuses to be ended early; older rows were all ordinary.
       db.execSQL("ALTER TABLE sessions ADD COLUMN strict INTEGER NOT NULL DEFAULT 0")
+    }
+    if (oldVersion < 4) {
+      db.execSQL(
+        """CREATE TABLE schedules (
+          id TEXT PRIMARY KEY NOT NULL,
+          label TEXT NOT NULL,
+          days INTEGER NOT NULL,
+          start_minute INTEGER NOT NULL,
+          duration_minutes INTEGER NOT NULL,
+          strict INTEGER NOT NULL DEFAULT 0,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          created_at INTEGER NOT NULL
+        )""",
+      )
     }
   }
 
@@ -391,6 +428,52 @@ class FocusDatabase private constructor(context: Context) :
   }
 
   @Synchronized
+  fun getSchedules(): List<StoredSchedule> = readableDatabase.rawQuery(
+    "SELECT id, label, days, start_minute, duration_minutes, strict, enabled FROM schedules ORDER BY start_minute ASC, created_at ASC",
+    null,
+  ).use { cursor ->
+    buildList {
+      while (cursor.moveToNext()) {
+        add(
+          StoredSchedule(
+            id = cursor.getString(0),
+            label = cursor.getString(1),
+            days = cursor.getInt(2),
+            startMinute = cursor.getInt(3),
+            durationMinutes = cursor.getInt(4),
+            strict = cursor.getInt(5) == 1,
+            enabled = cursor.getInt(6) == 1,
+          ),
+        )
+      }
+    }
+  }
+
+  @Synchronized
+  fun saveSchedule(schedule: StoredSchedule) {
+    require(schedule.id.isNotBlank()) { "Schedule id is required." }
+    require(schedule.days and ScheduleMath.ALL_DAYS != 0) { "Choose at least one day." }
+    require(schedule.startMinute in 0..1439) { "Invalid start time." }
+    require(schedule.durationMinutes in 1..1440) { "Duration must be 1 minute to 24 hours." }
+    val values = ContentValues().apply {
+      put("id", schedule.id)
+      put("label", schedule.label)
+      put("days", schedule.days and ScheduleMath.ALL_DAYS)
+      put("start_minute", schedule.startMinute)
+      put("duration_minutes", schedule.durationMinutes)
+      put("strict", if (schedule.strict) 1 else 0)
+      put("enabled", if (schedule.enabled) 1 else 0)
+      put("created_at", System.currentTimeMillis())
+    }
+    writableDatabase.insertWithOnConflict("schedules", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+  }
+
+  @Synchronized
+  fun deleteSchedule(id: String) {
+    writableDatabase.delete("schedules", "id = ?", arrayOf(id))
+  }
+
+  @Synchronized
   fun setSelectedApps(apps: List<StoredApp>) =
     setSetting(SELECTED_APPS, appsToJson(apps.map { it.copy(iconBase64 = null) }))
 
@@ -419,6 +502,7 @@ class FocusDatabase private constructor(context: Context) :
     try {
       db.delete("block_attempts", null, null)
       db.delete("sessions", null, null)
+      db.delete("schedules", null, null)
       db.delete("settings", null, null)
       db.setTransactionSuccessful()
     } finally {
@@ -448,7 +532,7 @@ class FocusDatabase private constructor(context: Context) :
 
   companion object {
     private const val DATABASE_NAME = "focus_guard.db"
-    private const val DATABASE_VERSION = 3
+    private const val DATABASE_VERSION = 4
     const val SELECTED_APPS = "selected_apps"
     const val ONBOARDING_COMPLETED = "onboarding_completed"
     const val THEME_PREFERENCE = "theme_preference"

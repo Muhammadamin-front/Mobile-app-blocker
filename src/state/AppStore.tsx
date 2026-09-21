@@ -20,6 +20,7 @@ import {
 import {
   AppSettings,
   FocusSession,
+  FocusSchedule,
   FocusTrends,
   FocusStats,
   InstalledApp,
@@ -65,6 +66,7 @@ interface AppStoreValue {
   history: FocusSession[];
   stats: FocusStats;
   trends: FocusTrends;
+  schedules: FocusSchedule[];
   screenTime: ScreenTimeReport;
   trendRange: TrendRange;
   trendsLoading: boolean;
@@ -76,6 +78,8 @@ interface AppStoreValue {
   setLanguage(language: LanguagePreference): Promise<void>;
   refresh(): Promise<void>;
   setTrendRange(range: TrendRange): void;
+  saveSchedule(schedule: FocusSchedule): Promise<void>;
+  deleteSchedule(id: string): Promise<void>;
   loadInstalledApps(): Promise<void>;
   setSelectedApps(apps: InstalledApp[]): Promise<void>;
   startSession(input: StartSessionInput): Promise<void>;
@@ -101,6 +105,7 @@ export function AppStoreProvider({children}: PropsWithChildren) {
   const [stats, setStats] = useState<FocusStats>(emptyStats);
   const [trends, setTrends] = useState<FocusTrends>(emptyTrends);
   const [screenTime, setScreenTime] = useState<ScreenTimeReport>(emptyScreenTime);
+  const [schedules, setSchedules] = useState<FocusSchedule[]>([]);
   const [trendRange, setTrendRange] = useState<TrendRange>('week');
   const [trendsLoading, setTrendsLoading] = useState(true);
   const [permission, setPermission] = useState<PermissionStatus>({
@@ -138,14 +143,22 @@ export function AppStoreProvider({children}: PropsWithChildren) {
 
   const refresh = useCallback(async () => {
     await run(async () => {
-      const [nextPermission, session, nextHistory, nextStats, nextSettings, apps] =
-        await Promise.all([
+      const [
+        nextPermission,
+        session,
+        nextHistory,
+        nextStats,
+        nextSettings,
+        apps,
+        nextSchedules,
+      ] = await Promise.all([
           appBlockingService.getPermissionStatus(),
           appBlockingService.getActiveSession(),
           appBlockingService.getHistory(),
           appBlockingService.getStatistics(),
           appBlockingService.getSettings(),
           appBlockingService.getBlockedApps(),
+          appBlockingService.getSchedules(),
         ]);
       setPermission(nextPermission);
       setActiveSession(session);
@@ -153,6 +166,7 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       setStats(nextStats);
       setSettings(nextSettings);
       setSelectedAppsState(apps);
+      setSchedules(nextSchedules);
     });
   }, [run]);
 
@@ -329,6 +343,26 @@ export function AppStoreProvider({children}: PropsWithChildren) {
     [run],
   );
 
+  const saveSchedule = useCallback(
+    async (schedule: FocusSchedule) => {
+      await run(async () => {
+        await appBlockingService.saveSchedule(schedule);
+        setSchedules(await appBlockingService.getSchedules());
+      });
+    },
+    [run],
+  );
+
+  const deleteSchedule = useCallback(
+    async (id: string) => {
+      await run(async () => {
+        await appBlockingService.deleteSchedule(id);
+        setSchedules(await appBlockingService.getSchedules());
+      });
+    },
+    [run],
+  );
+
   const setLanguage = useCallback(
     async (language: LanguagePreference) => {
       setSettings(current => ({...current, language}));
@@ -349,6 +383,7 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       setStats(emptyStats);
       setTrends(emptyTrends);
       setScreenTime(emptyScreenTime);
+      setSchedules([]);
       setSettings({onboardingCompleted: false, themePreference: 'system', language: 'system'});
     });
     setBusy(false);
@@ -385,10 +420,13 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       history,
       stats,
       trends,
+      schedules,
       screenTime,
       trendRange,
       trendsLoading,
       setTrendRange,
+      saveSchedule,
+      deleteSchedule,
       permission,
       onboardingCompleted: settings.onboardingCompleted,
       themePreference: settings.themePreference,
@@ -421,7 +459,10 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       openUsageAccessSettings,
       permission,
       refresh,
+      deleteSchedule,
       resetAllData,
+      saveSchedule,
+      schedules,
       screenTime,
       setLanguage,
       settings,

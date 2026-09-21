@@ -17,9 +17,14 @@ class BootReceiver : BroadcastReceiver() {
     val appContext = context.applicationContext
     Thread {
       try {
-        FocusDatabase.get(appContext).normalizeSessions()
-        FocusAccessibilityService.invalidateCache()
-        FocusNotifier.sync(appContext)
+        if (action == FocusScheduler.ACTION_SCHEDULE_DUE) {
+          FocusScheduler.fire(appContext)
+        } else {
+          FocusDatabase.get(appContext).normalizeSessions()
+          FocusAccessibilityService.invalidateCache()
+          FocusNotifier.sync(appContext)
+          FocusScheduler.sync(appContext)
+        }
       } catch (error: Throwable) {
         Log.w(TAG, "Could not normalize sessions after $action.", error)
       } finally {
@@ -32,6 +37,7 @@ class BootReceiver : BroadcastReceiver() {
     private const val TAG = "FocusGuard"
     private val SUPPORTED_ACTIONS = setOf(
       FocusNotifier.ACTION_SESSION_DUE,
+      FocusScheduler.ACTION_SCHEDULE_DUE,
       Intent.ACTION_BOOT_COMPLETED,
       Intent.ACTION_TIME_CHANGED,
       Intent.ACTION_TIMEZONE_CHANGED,

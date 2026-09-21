@@ -16,6 +16,7 @@ import {
   formatMinutes,
   getSessionRemainingMillis,
 } from '../../domain/session';
+import {SchedulesSection} from '../SchedulesSection';
 import {useAppStore} from '../../state/AppStore';
 import {radii, spacing, Theme} from '../../theme/theme';
 import {
@@ -528,6 +529,7 @@ export function HomeScreen({
       {!selectedApps.length ? (
         <Text style={[styles.startHint, {color: theme.textSubtle}]}>{t('Choose at least one app to begin.')}</Text>
       ) : null}
+      <SchedulesSection theme={theme} />
     </ScrollView>
   );
 }
