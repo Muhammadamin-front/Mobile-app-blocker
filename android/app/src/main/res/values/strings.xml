@@ -1,14 +1,14 @@
 <resources>
-    <string name="app_name">FocusGuard</string>
-    <string name="accessibility_service_label">FocusGuard app blocking</string>
-    <string name="accessibility_service_description">Detects when an app from your active, locally stored block list is opened and shows the FocusGuard block screen. It does not inspect screen content.</string>
+    <string name="app_name" translatable="false">Qoriqchi</string>
+    <string name="accessibility_service_label">Qoriqchi app blocking</string>
+    <string name="accessibility_service_description">Detects when an app from your active, locally stored block list is opened and shows the Qoriqchi block screen. It does not inspect screen content.</string>
     <string name="block_mode_label">FOCUS MODE</string>
     <string name="block_title">Stay with your intention.</string>
     <string name="block_app_message">%1$s is currently blocked.</string>
     <string name="block_remaining_label">REMAINING</string>
-    <string name="block_initial_timer">00:00:00</string>
+    <string name="block_initial_timer" translatable="false">00:00:00</string>
     <string name="block_home_button">Back to Home</string>
-    <string name="block_protection_note">FocusGuard is protecting this moment</string>
+    <string name="block_protection_note">Qoriqchi is protecting this moment</string>
     <string name="block_native_status">Native protection is active</string>
     <string name="notification_channel_name">Active focus session</string>
     <string name="notification_channel_description">Shows the remaining time while a focus session is running.</string>
@@ -17,6 +17,6 @@
     <string name="notification_blocked_apps">%1$d app blocked</string>
     <string name="notification_blocked_apps_plural">%1$d apps blocked</string>
     <string name="notification_starts_soon">Starting soon</string>
-    <string name="block_quote">“%1$s”</string>
-    <string name="block_quote_author">— %1$s</string>
+    <string name="block_quote" translatable="false">“%1$s”</string>
+    <string name="block_quote_author" translatable="false">— %1$s</string>
 </resources>

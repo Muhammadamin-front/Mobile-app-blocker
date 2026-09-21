@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 
 import {TrendRange} from '../../domain/models';
-import {formatFocusHm, formatMinutes, formatSpanHm, pluralize} from '../../domain/session';
+import {formatFocusHm, formatMinutes, formatSpanHm} from '../../domain/session';
 import {useAppStore} from '../../state/AppStore';
 import {radii, spacing, Theme} from '../../theme/theme';
 import {FocusChart} from '../FocusChart';
@@ -25,6 +25,7 @@ export function HistoryScreen({theme}: {theme: Theme}) {
     trendsLoading,
     openUsageAccessSettings,
     setTrendRange,
+    t,
   } = useAppStore();
   const topAttempts = trends.topApps;
   const [selectedBucket, setSelectedBucket] = useState<number | null>(null);
@@ -47,9 +48,9 @@ export function HistoryScreen({theme}: {theme: Theme}) {
       contentContainerStyle={styles.content}>
       <ScreenHeader
         theme={theme}
-        eyebrow="YOUR PROGRESS"
-        title="Momentum, made visible."
-        subtitle="A quiet record of the time you protected and the impulses you outlasted."
+        eyebrow={t('YOUR PROGRESS')}
+        title={t('Momentum, made visible.')}
+        subtitle={t('A quiet record of the time you protected and the impulses you outlasted.')}
       />
 
       <View style={[styles.rangeRow, {backgroundColor: theme.surfaceMuted, borderColor: theme.border}]}>
@@ -71,7 +72,7 @@ export function HistoryScreen({theme}: {theme: Theme}) {
                   {color: active ? theme.text : theme.textMuted},
                   active && styles.rangeLabelActive,
                 ]}>
-                {item.label}
+                {t(item.label)}
               </Text>
             </Pressable>
           );
@@ -94,12 +95,12 @@ export function HistoryScreen({theme}: {theme: Theme}) {
         <View style={styles.metricRow}>
           <View style={styles.metric}>
             <Text style={[styles.metricValue, {color: theme.text}]}>{trends.completedSessions}</Text>
-            <Text style={[styles.metricLabel, {color: theme.textMuted}]}>Completed</Text>
+            <Text style={[styles.metricLabel, {color: theme.textMuted}]}>{t('Completed')}</Text>
           </View>
           <View style={[styles.metricDivider, {backgroundColor: theme.border}]} />
           <View style={styles.metric}>
             <Text style={[styles.metricValue, {color: theme.text}]}>{trends.blockedAttempts}</Text>
-            <Text style={[styles.metricLabel, {color: theme.textMuted}]}>Distractions stopped</Text>
+            <Text style={[styles.metricLabel, {color: theme.textMuted}]}>{t('Distractions stopped')}</Text>
           </View>
         </View>
         <Text style={[styles.heroFootnote, {color: theme.textMuted}]}>
@@ -108,7 +109,7 @@ export function HistoryScreen({theme}: {theme: Theme}) {
       </Card>
 
       <View style={styles.sectionBlock}>
-        <SectionTitle theme={theme}>Focus time</SectionTitle>
+        <SectionTitle theme={theme}>{t('Focus time')}</SectionTitle>
         <Card theme={theme} style={[styles.chartCard, trendsLoading && styles.chartLoading]}>
           <View style={styles.readout}>
             <Text style={[styles.readoutValue, {color: theme.text}]}>
@@ -139,7 +140,7 @@ export function HistoryScreen({theme}: {theme: Theme}) {
 
       {topAttempts.length ? (
         <View style={styles.sectionBlock}>
-          <SectionTitle theme={theme} detail={range.caption}>Top distractions</SectionTitle>
+          <SectionTitle theme={theme} detail={t(range.caption)}>{t('Top distractions')}</SectionTitle>
           <Card theme={theme} style={styles.attemptsCard}>
             {topAttempts.map((attempt, index) => {
               const max = topAttempts[0]?.attempts || 1;
@@ -170,19 +171,19 @@ export function HistoryScreen({theme}: {theme: Theme}) {
       ) : null}
 
       <View style={styles.sectionBlock}>
-        <SectionTitle theme={theme} detail={permission.usageAccessEnabled ? range.caption : 'Optional'}>
+        <SectionTitle theme={theme} detail={permission.usageAccessEnabled ? t(range.caption) : t('Optional')}>
           Screen time
         </SectionTitle>
         {!permission.usageAccessEnabled ? (
           <Card theme={theme} style={styles.usageCard}>
-            <Text style={[styles.usageTitle, {color: theme.text}]}>See where the time actually goes</Text>
+            <Text style={[styles.usageTitle, {color: theme.text}]}>{t('See where the time actually goes')}</Text>
             <Text style={[styles.usageBody, {color: theme.textMuted}]}>
-              Android can tell FocusGuard how long each app was on screen. Turning this
+              Android can tell Qoriqchi how long each app was on screen. Turning this
               on adds the breakdown below; leaving it off changes nothing about blocking.
               The numbers stay on this phone either way.
             </Text>
             <PrimaryButton
-              label="Turn on screen time"
+              label={t('Turn on screen time')}
               onPress={openUsageAccessSettings}
               theme={theme}
               variant="secondary"
@@ -224,15 +225,15 @@ export function HistoryScreen({theme}: {theme: Theme}) {
             <EmptyState
               theme={theme}
               symbol="◴"
-              title="Nothing recorded yet"
-              body="Android has no screen-time data for this window."
+              title={t('Nothing recorded yet')}
+              body={t('Android has no screen-time data for this window.')}
             />
           </Card>
         )}
       </View>
 
       <View style={styles.sectionBlock}>
-        <SectionTitle theme={theme} detail={`${history.length} total`}>Recent sessions</SectionTitle>
+        <SectionTitle theme={theme} detail={t('{n} total', {n: history.length})}>{t('Recent sessions')}</SectionTitle>
         {history.length ? history.map(session => {
           const durationMinutes = Math.max(1, Math.round((session.endTimestamp - session.startTimestamp) / 60_000));
           const completed = session.status === 'COMPLETED';
@@ -250,16 +251,16 @@ export function HistoryScreen({theme}: {theme: Theme}) {
                     </Text>
                   </View>
                   <StatusBadge
-                    label={completed ? 'Completed' : 'Ended early'}
+                    label={completed ? t('Completed') : t('Ended early')}
                     theme={theme}
                     tone={completed ? 'success' : 'neutral'}
                   />
                 </View>
-                <Text style={[styles.sessionDuration, {color: theme.text}]}>{formatMinutes(durationMinutes)}</Text>
+                <Text style={[styles.sessionDuration, {color: theme.text}]}>{formatMinutes(durationMinutes, t)}</Text>
                 <View style={styles.sessionMetaRow}>
-                  <Text style={[styles.sessionMeta, {color: theme.textMuted}]}>{pluralize(session.blockedApps.length, 'app')} quieted</Text>
+                  <Text style={[styles.sessionMeta, {color: theme.textMuted}]}>{t('{n} apps quieted', {n: session.blockedApps.length})}</Text>
                   <View style={[styles.metaDot, {backgroundColor: theme.textSubtle}]} />
-                  <Text style={[styles.sessionMeta, {color: theme.textMuted}]}>{pluralize(session.blockedAttempts, 'attempt')} stopped</Text>
+                  <Text style={[styles.sessionMeta, {color: theme.textMuted}]}>{t('{n} attempts stopped', {n: session.blockedAttempts})}</Text>
                 </View>
               </View>
             </Card>
@@ -269,8 +270,8 @@ export function HistoryScreen({theme}: {theme: Theme}) {
             <EmptyState
               theme={theme}
               symbol="◷"
-              title="Your first session starts here"
-              body="Completed and ended focus sessions will appear as your private progress timeline."
+              title={t('Your first session starts here')}
+              body={t('Completed and ended focus sessions will appear as your private progress timeline.')}
             />
           </Card>
         )}

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="focus_quotes">
+        <item>Diqqatni jamlash — kuchning siri.</item>
+        <item>Band bo\'lish yetarli emas. Savol shundaki: nima bilan bandmiz?</item>
+        <item>Sen o\'z ongingga hukmronsan — tashqi hodisalarga emas.</item>
+        <item>Biz muntazam qiladigan ishimizmiz. Demak, mukammallik — harakat emas, odat.</item>
+        <item>Kunlarimizni qanday o\'tkazsak, umrimizni ham shunday o\'tkazamiz.</item>
+        <item>Bir vaqtda ikki ish qilish — hech birini qilmaslik.</item>
+        <item>Vaqt — biz eng ko\'p istaydigan, lekin eng yomon sarflaydigan narsa.</item>
+        <item>Umuman qilinmasligi kerak bo\'lgan ishni samaraliroq qilishdan befoydaroq narsa yo\'q.</item>
+    </string-array>
+    <string-array name="focus_quote_authors">
+        <item>Ralf Valdo Emerson</item>
+        <item>Genri Devid Toro</item>
+        <item>Mark Avreliy</item>
+        <item>Vill Dyurant</item>
+        <item>Enni Dillard</item>
+        <item>Publiliy Sir</item>
+        <item>Uilyam Penn</item>
+        <item>Piter Draker</item>
+    </string-array>
+</resources>

@@ -19,6 +19,7 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
     completeOnboarding,
     openPermissionSettings,
     refresh,
+    t,
   } = useAppStore();
   const [accepted, setAccepted] = useState(false);
   const checkboxColors = {
@@ -46,8 +47,8 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
         contentContainerStyle={styles.content}>
         <View style={styles.brandRow}>
           <BrandMark theme={theme} size={46} />
-          <Text style={[styles.brandName, {color: theme.text}]}>FocusGuard</Text>
-          <StatusBadge label="Offline" theme={theme} tone="success" />
+          <Text style={[styles.brandName, {color: theme.text}]}>Qoriqchi</Text>
+          <StatusBadge label={t('Offline')} theme={theme} tone="success" />
         </View>
 
         <View style={styles.hero}>
@@ -59,9 +60,9 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
             </View>
           </View>
           <Text style={[styles.eyebrow, {color: theme.primary}]}>WELCOME TO QUIETER TIME</Text>
-          <Text style={[styles.title, {color: theme.text}]}>Focus without fighting yourself.</Text>
+          <Text style={[styles.title, {color: theme.text}]}>{t('Focus without fighting yourself.')}</Text>
           <Text style={[styles.subtitle, {color: theme.textMuted}]}>
-            Choose distracting apps, set a boundary, and let FocusGuard protect the time you meant to keep.
+            Choose distracting apps, set a boundary, and let Qoriqchi protect the time you meant to keep.
           </Text>
         </View>
 
@@ -82,8 +83,8 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
             <Text style={[styles.stepNumberText, {color: theme.inverseText}]}>1</Text>
           </View>
           <View>
-            <Text style={[styles.stepTitle, {color: theme.text}]}>Enable focused protection</Text>
-            <Text style={[styles.stepSubtitle, {color: theme.textMuted}]}>One permission, explained clearly</Text>
+            <Text style={[styles.stepTitle, {color: theme.text}]}>{t('Enable focused protection')}</Text>
+            <Text style={[styles.stepSubtitle, {color: theme.textMuted}]}>{t('One permission, explained clearly')}</Text>
           </View>
         </View>
 
@@ -96,11 +97,11 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
             </View>
             <View style={styles.disclosureHeaderCopy}>
               <Text style={[styles.cardEyebrow, {color: theme.warning}]}>ACCESSIBILITY DISCLOSURE</Text>
-              <Text style={[styles.cardTitle, {color: theme.text}]}>Why this access is required</Text>
+              <Text style={[styles.cardTitle, {color: theme.text}]}>{t('Why this access is required')}</Text>
             </View>
           </View>
           <Text style={[styles.cardBody, {color: theme.textMuted}]}>
-            FocusGuard uses Android Accessibility events only to read the package name of the app that appears on screen. If it matches your active block list, FocusGuard opens its block screen.
+            Qoriqchi uses Android Accessibility events only to read the package name of the app that appears on screen. If it matches your active block list, Qoriqchi opens its block screen.
           </Text>
           <View style={[styles.privacyNote, {backgroundColor: theme.surfaceMuted}]}>
             <View style={[styles.privacyDot, {backgroundColor: theme.success}]} />
@@ -136,11 +137,11 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
         {permission.accessibilityEnabled ? (
           <View style={[styles.enabledBadge, {backgroundColor: theme.successSoft}]}>
             <View style={[styles.enabledDot, {backgroundColor: theme.success}]} />
-            <Text style={[styles.enabledText, {color: theme.success}]}>Accessibility service enabled</Text>
+            <Text style={[styles.enabledText, {color: theme.success}]}>{t('Accessibility service enabled')}</Text>
           </View>
         ) : (
           <PrimaryButton
-            label="Open Accessibility settings"
+            label={t('Open Accessibility settings')}
             trailing="→"
             onPress={openPermissionSettings}
             theme={theme}
@@ -150,7 +151,7 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
 
         <View style={styles.buttonSpacer} />
         <PrimaryButton
-          label="Enter FocusGuard"
+          label={t('Enter Qoriqchi')}
           onPress={finish}
           theme={theme}
           variant={permission.accessibilityEnabled ? 'primary' : 'secondary'}
@@ -158,7 +159,7 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
           loading={busy}
         />
         <Text style={[styles.note, {color: theme.textSubtle}]}>
-          Android always lets you disable this service or uninstall FocusGuard. FocusGuard never prevents either action.
+          Android always lets you disable this service or uninstall Qoriqchi. Qoriqchi never prevents either action.
         </Text>
       </ScrollView>
     </SafeAreaView>

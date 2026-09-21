@@ -439,6 +439,7 @@ class FocusDatabase private constructor(context: Context) :
     const val SELECTED_APPS = "selected_apps"
     const val ONBOARDING_COMPLETED = "onboarding_completed"
     const val THEME_PREFERENCE = "theme_preference"
+    const val LANGUAGE_PREFERENCE = "language_preference"
 
     @Volatile private var instance: FocusDatabase? = null
 

@@ -1,3 +1,4 @@
+import {LanguagePreference} from '../i18n';
 import {IconMap} from '../domain/icons';
 import {
   AppSettings,
@@ -35,5 +36,6 @@ export interface AppBlockingService {
   getSettings(): Promise<AppSettings>;
   completeOnboarding(): Promise<void>;
   setThemePreference(theme: ThemePreference): Promise<void>;
+  setLanguagePreference(language: LanguagePreference): Promise<void>;
   resetAllData(): Promise<void>;
 }

@@ -12,6 +12,8 @@ import android.provider.Settings
 import android.provider.Telephony
 import android.telecom.TelecomManager
 import android.util.Base64
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import android.view.accessibility.AccessibilityManager
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -22,7 +24,9 @@ import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
+import com.facebook.react.bridge.UiThreadUtil
 import java.io.ByteArrayOutputStream
+import java.util.Locale
 import java.util.concurrent.Executors
 
 class FocusGuardModule(private val context: ReactApplicationContext) :
@@ -33,6 +37,32 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   private val executor = Executors.newSingleThreadExecutor()
 
   override fun getName(): String = "FocusGuard"
+
+  override fun initialize() {
+    super.initialize()
+    // The stored choice has to reach Android itself, or the block screen and the
+    // notification keep speaking the phone's language instead of the app's.
+    executor.execute {
+      val stored = runCatching {
+        database.getSetting(FocusDatabase.LANGUAGE_PREFERENCE)
+      }.getOrNull() ?: "system"
+      applyLocale(stored)
+    }
+  }
+
+  private fun applyLocale(language: String) {
+    UiThreadUtil.runOnUiThread {
+      runCatching {
+        AppCompatDelegate.setApplicationLocales(
+          if (language == "system") {
+            LocaleListCompat.getEmptyLocaleList()
+          } else {
+            LocaleListCompat.forLanguageTags(language)
+          },
+        )
+      }
+    }
+  }
 
   override fun invalidate() {
     executor.shutdownNow()
@@ -227,6 +257,9 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     Arguments.createMap().apply {
       putBoolean("onboardingCompleted", database.getSetting(FocusDatabase.ONBOARDING_COMPLETED) == "true")
       putString("themePreference", database.getSetting(FocusDatabase.THEME_PREFERENCE) ?: "system")
+      putString("language", database.getSetting(FocusDatabase.LANGUAGE_PREFERENCE) ?: "system")
+      // What the phone itself is set to, so "system" can resolve without guessing.
+      putString("deviceLanguage", Locale.getDefault().language)
     }
   }
 
@@ -240,6 +273,16 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   fun setThemePreference(theme: String, promise: Promise) = background(promise) {
     require(theme in setOf("system", "light", "dark")) { "Invalid theme preference." }
     database.setSetting(FocusDatabase.THEME_PREFERENCE, theme)
+    null
+  }
+
+  @ReactMethod
+  fun setLanguagePreference(language: String, promise: Promise) = background(promise) {
+    require(language in setOf("system", "en", "uz")) { "Invalid language preference." }
+    database.setSetting(FocusDatabase.LANGUAGE_PREFERENCE, language)
+    // Also moves the native side — the block screen and the timer notification read
+    // Android resources, not the JavaScript dictionary.
+    applyLocale(language)
     null
   }
 

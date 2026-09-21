@@ -47,6 +47,7 @@ export function HomeScreen({
     stopSession,
     openPermissionSettings,
     refresh,
+    t,
   } = useAppStore();
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [custom, setCustom] = useState('45');
@@ -104,11 +105,11 @@ export function HomeScreen({
   // Ending early throws the session away, so it asks twice before it does.
   const confirmEnd = () => {
     Alert.alert(
-      'End focus session?',
+      t('End focus session?'),
       `${formatDuration(remaining)} still to go. Your blocked apps unlock the moment this ends.`,
       [
-        {text: 'Keep focusing', style: 'cancel'},
-        {text: 'End session', style: 'destructive', onPress: confirmEndAgain},
+        {text: t('Keep focusing'), style: 'cancel'},
+        {text: t('End session'), style: 'destructive', onPress: confirmEndAgain},
       ],
       {cancelable: true},
     );
@@ -116,11 +117,11 @@ export function HomeScreen({
 
   const confirmEndAgain = () => {
     Alert.alert(
-      'Are you sure?',
-      'This session will be saved as stopped, not completed. This cannot be undone.',
+      t('Are you sure?'),
+      t('This session will be saved as stopped, not completed. This cannot be undone.'),
       [
-        {text: 'Stay focused', style: 'cancel'},
-        {text: 'Yes, end it', style: 'destructive', onPress: () => stopSession()},
+        {text: t('Stay focused'), style: 'cancel'},
+        {text: t('Yes, end it'), style: 'destructive', onPress: () => stopSession()},
       ],
       {cancelable: true},
     );
@@ -141,61 +142,97 @@ export function HomeScreen({
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}>
+        contentContainerStyle={[styles.content, styles.activeContent]}>
         <View style={styles.activeHeader}>
-          <StatusBadge
-            label={
-              !permission.ready
-                ? 'Not enforcing'
-                : isScheduled
-                  ? 'Scheduled'
-                  : 'Focus active'
-            }
-            theme={theme}
-            tone={!permission.ready ? 'danger' : isScheduled ? 'warning' : 'success'}
-          />
-          <Text style={[styles.activeTitle, {color: theme.text}]}>
-            {isScheduled ? 'Your session is ready.' : 'Stay with the moment.'}
+          <View style={styles.activeMetaRow}>
+            <StatusBadge
+              label={
+                !permission.ready
+                  ? t('Not enforcing')
+                  : isScheduled
+                    ? t('Scheduled')
+                    : t('Focus active')
+              }
+              theme={theme}
+              tone={!permission.ready ? 'danger' : isScheduled ? 'warning' : 'success'}
+              onBright
+            />
+            <View style={styles.sessionMonogram}>
+              <View style={[styles.sessionMonogramLine, {backgroundColor: theme.primary}]} />
+              <Text style={[styles.sessionMonogramText, {color: `${theme.background}9E`}]}>QORIQCHI</Text>
+            </View>
+          </View>
+          <Text style={[styles.activeTitle, {color: theme.background}]}> 
+            {isScheduled ? t('Your session is ready.') : t('Stay with the moment.')}
           </Text>
-          <Text style={[styles.activeSubtitle, {color: theme.textMuted}]}>
+          <Text style={[styles.activeSubtitle, {color: `${theme.background}C4`}]}> 
             {!permission.ready
-              ? 'FocusGuard cannot enforce this session right now.'
+              ? t('Qoriqchi cannot enforce this session right now.')
               : isScheduled
-                ? 'FocusGuard will begin automatically at the scheduled time.'
-                : 'Everything is working. You can safely close this app.'}
+                ? t('Qoriqchi will begin automatically at the scheduled time.')
+                : t('Everything is working. You can safely close this app.')}
           </Text>
         </View>
 
-        <Card theme={theme} elevated style={styles.timerCard}>
-          <View style={[styles.timerHalo, {backgroundColor: theme.primarySoft}]}>
-            <View style={[styles.timerRing, {borderColor: theme.primary}]}>
-              <Text style={[styles.timerLabel, {color: theme.textMuted}]}>
-                {isScheduled ? 'STARTS IN' : 'REMAINING'}
+        <Card theme={theme} elevated style={[styles.timerCard, {borderColor: theme.borderStrong}]}> 
+          <View pointerEvents="none" style={[styles.timerCornerGlow, {backgroundColor: theme.primary}]} />
+          <View style={styles.timerCardHeader}>
+            <Text style={[styles.timerCardEyebrow, {color: theme.textSubtle}]}>{t('FOCUS TIMER')}</Text>
+            <View style={[styles.livePill, {backgroundColor: theme.primarySoft, borderColor: theme.borderStrong}]}> 
+              <View style={[styles.liveDot, {backgroundColor: theme.primary}]} />
+              <Text style={[styles.liveText, {color: theme.primary}]}>{isScheduled ? t('Scheduled') : t('LIVE')}</Text>
+            </View>
+          </View>
+          <View style={[styles.timerHalo, {backgroundColor: theme.primarySoft, borderColor: `${theme.primary}24`}]}> 
+            <View style={[styles.timerOuterRing, {borderColor: `${theme.primary}4A`}]}> 
+              {Array.from({length: 12}).map((_, index) => (
+                <View key={index} style={[styles.tickAnchor, {transform: [{rotate: `${index * 30}deg`}]}]}>
+                  <View style={[styles.timerTick, {backgroundColor: index % 3 === 0 ? theme.primary : `${theme.primary}58`}]} />
+                </View>
+              ))}
+            </View>
+            <View style={[styles.timerRing, {borderColor: theme.primary, backgroundColor: theme.background}]}> 
+              <Text style={[styles.timerLabel, {color: theme.textMuted}]}> 
+                {isScheduled ? t('STARTS IN') : t('REMAINING')}
               </Text>
-              <Text style={[styles.timer, {color: theme.text}]}>
+              <Text style={[styles.timer, {color: theme.text}]}> 
                 {formatDuration(isScheduled ? startsIn : remaining)}
               </Text>
+              <View style={styles.timerModeRow}>
+                <View style={[styles.timerModeDot, {backgroundColor: permission.ready ? theme.success : theme.danger}]} />
+                <Text style={[styles.timerModeText, {color: theme.textSubtle}]}>{t('DEEP FOCUS')}</Text>
+              </View>
             </View>
           </View>
           <View style={[styles.timerDivider, {backgroundColor: theme.border}]} />
           <View style={styles.timerFooter}>
-            <View>
-              <Text style={[styles.timerFooterLabel, {color: theme.textSubtle}]}>ENDS AT</Text>
-              <Text style={[styles.timerFooterValue, {color: theme.text}]}>
+            <View style={styles.timerMetric}>
+              <View style={[styles.metricIcon, {backgroundColor: theme.primarySoft}]}> 
+                <View style={[styles.metricClock, {borderColor: theme.primary}]}> 
+                  <View style={[styles.metricHand, {backgroundColor: theme.primary}]} />
+                </View>
+              </View>
+              <View>
+              <Text style={[styles.timerFooterLabel, {color: theme.textSubtle}]}>{t('ENDS AT')}</Text>
+              <Text style={[styles.timerFooterValue, {color: theme.text}]}> 
                 {new Date(activeSession.endTimestamp).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}
               </Text>
+              </View>
             </View>
-            <View style={styles.appStack}>
-              {activeSession.blockedApps.slice(0, 4).map((app, index) => (
-                <View key={app.packageName} style={index ? styles.stackedIcon : undefined}>
-                  <AppIcon app={app} size={36} />
-                </View>
-              ))}
-              {activeSession.blockedApps.length > 4 ? (
-                <View style={[styles.stackCount, styles.stackedIcon, {backgroundColor: theme.surfaceMuted, borderColor: theme.surface}]}>
-                  <Text style={[styles.stackCountText, {color: theme.text}]}>+{activeSession.blockedApps.length - 4}</Text>
-                </View>
-              ) : null}
+            <View style={styles.appsMetric}>
+              <Text style={[styles.timerFooterLabel, {color: theme.textSubtle}]}>{t('PROTECTED APPS')}</Text>
+              <View style={styles.appStack}>
+                {activeSession.blockedApps.slice(0, 4).map((app, index) => (
+                  <View key={app.packageName} style={index ? styles.stackedIcon : undefined}>
+                    <AppIcon app={app} size={32} />
+                  </View>
+                ))}
+                {activeSession.blockedApps.length > 4 ? (
+                  <View style={[styles.stackCount, styles.stackedIcon, {backgroundColor: theme.surfaceMuted, borderColor: theme.surface}]}> 
+                    <Text style={[styles.stackCountText, {color: theme.text}]}>+{activeSession.blockedApps.length - 4}</Text>
+                  </View>
+                ) : null}
+              </View>
             </View>
           </View>
         </Card>
@@ -206,29 +243,29 @@ export function HomeScreen({
               styles.protectionIcon,
               {backgroundColor: permission.ready ? theme.successSoft : theme.dangerSoft},
             ]}>
-            <View
-              style={[
-                styles.protectionDot,
-                {backgroundColor: permission.ready ? theme.success : theme.danger},
-              ]}
-            />
+            <View style={[styles.shieldTop, {borderColor: permission.ready ? theme.success : theme.danger}]} />
+            <Text style={[styles.shieldCheck, {color: permission.ready ? theme.success : theme.danger}]}>✓</Text>
           </View>
           <View style={styles.protectionCopy}>
             <Text style={[styles.protectionTitle, {color: theme.text}]}>
-              {permission.ready ? 'Native protection is on' : 'Blocking has stopped'}
+              {permission.ready ? t('Native protection is on') : t('Blocking has stopped')}
             </Text>
             <Text style={[styles.protectionBody, {color: theme.textMuted}]}>
               {permission.ready
-                ? 'Blocking continues even when FocusGuard is closed.'
-                : 'Accessibility access is off, so blocked apps open normally. Turn it back on to resume this session.'}
+                ? t('Blocking continues even when Qoriqchi is closed.')
+                : t('Accessibility access is off, so blocked apps open normally. Turn it back on to resume this session.')}
             </Text>
+          </View>
+          <View style={[styles.protectionState, {backgroundColor: permission.ready ? theme.successSoft : theme.dangerSoft}]}> 
+            <View style={[styles.protectionStateDot, {backgroundColor: permission.ready ? theme.success : theme.danger}]} />
+            <Text style={[styles.protectionStateText, {color: permission.ready ? theme.success : theme.danger}]}>{permission.ready ? t('ON') : t('OFF')}</Text>
           </View>
         </Card>
 
         {permission.ready ? null : (
           <View style={styles.resumeButton}>
             <PrimaryButton
-              label="Turn blocking back on"
+              label={t('Turn blocking back on')}
               onPress={openPermissionSettings}
               theme={theme}
             />
@@ -236,11 +273,12 @@ export function HomeScreen({
         )}
 
         <PrimaryButton
-          label="End focus session"
+          label={t('End focus session')}
           onPress={confirmEnd}
           theme={theme}
           loading={busy}
           variant="danger"
+          leading={<View style={[styles.stopGlyph, {borderColor: theme.danger}]} />}
         />
       </ScrollView>
     );
@@ -253,9 +291,9 @@ export function HomeScreen({
       keyboardShouldPersistTaps="handled">
       <ScreenHeader
         theme={theme}
-        eyebrow="YOUR FOCUS SPACE"
-        title="Protect the next hour."
-        subtitle="Choose what stays quiet, then let FocusGuard hold the boundary."
+        eyebrow={t('YOUR FOCUS SPACE')}
+        title={t('Protect the next hour.')}
+        subtitle={t('Choose what stays quiet, then let Qoriqchi hold the boundary.')}
       />
 
       {!permission.ready ? (
@@ -271,17 +309,17 @@ export function HomeScreen({
             <Text style={[styles.permissionGlyph, {color: theme.warning}]}>!</Text>
           </View>
           <View style={styles.permissionCopy}>
-            <Text style={[styles.permissionTitle, {color: theme.text}]}>Finish setup</Text>
-            <Text style={[styles.permissionBody, {color: theme.textMuted}]}>Accessibility access is required before focus can start.</Text>
+            <Text style={[styles.permissionTitle, {color: theme.text}]}>{t('Finish setup')}</Text>
+            <Text style={[styles.permissionBody, {color: theme.textMuted}]}>{t('Accessibility access is required before focus can start.')}</Text>
           </View>
           <Text style={[styles.permissionArrow, {color: theme.warning}]}>›</Text>
         </Pressable>
       ) : null}
 
       <View style={styles.sectionHeaderRow}>
-        <SectionTitle theme={theme}>Distractions</SectionTitle>
+        <SectionTitle theme={theme}>{t('Distractions')}</SectionTitle>
         <Pressable hitSlop={10} onPress={onOpenApps} style={styles.editLinkTap}>
-          <Text style={[styles.editLink, {color: theme.primary}]}>Edit list</Text>
+          <Text style={[styles.editLink, {color: theme.primary}]}>{t('Edit list')}</Text>
         </Pressable>
       </View>
       <Card theme={theme} elevated style={styles.appsCard}>
@@ -299,7 +337,7 @@ export function HomeScreen({
                 <Text style={[styles.countBadgeText, {color: theme.primary}]}>{selectedApps.length}</Text>
               </View>
             </View>
-            <Text style={[styles.appsCardTitle, {color: theme.text}]}>Your block list is ready</Text>
+            <Text style={[styles.appsCardTitle, {color: theme.text}]}>{t('Your block list is ready')}</Text>
             <Text style={[styles.selectionText, {color: theme.textMuted}]} numberOfLines={2}>
               {selectedApps.map(app => app.appName).join(' · ')}
             </Text>
@@ -310,15 +348,15 @@ export function HomeScreen({
               <Text style={[styles.addIconText, {color: theme.primary}]}>+</Text>
             </View>
             <View style={styles.emptyAppsCopy}>
-              <Text style={[styles.emptyTitle, {color: theme.text}]}>Choose apps to quiet</Text>
-              <Text style={[styles.emptyBody, {color: theme.textMuted}]}>Social, video, games, or anything that pulls you away.</Text>
+              <Text style={[styles.emptyTitle, {color: theme.text}]}>{t('Choose apps to quiet')}</Text>
+              <Text style={[styles.emptyBody, {color: theme.textMuted}]}>{t('Social, video, games, or anything that pulls you away.')}</Text>
             </View>
             <Text style={[styles.chevron, {color: theme.textSubtle}]}>›</Text>
           </Pressable>
         )}
       </Card>
 
-      <SectionTitle theme={theme}>Duration</SectionTitle>
+      <SectionTitle theme={theme}>{t('Duration')}</SectionTitle>
       <View style={styles.durationGrid}>
         {DURATION_PRESETS.map(minutes => {
           const active = durationMinutes === minutes;
@@ -338,7 +376,7 @@ export function HomeScreen({
                 {minutes < 60 ? minutes : minutes / 60}
               </Text>
               <Text style={[styles.durationUnit, {color: active ? theme.primary : theme.textMuted}]}>
-                {minutes < 60 ? 'min' : minutes === 60 ? 'hour' : 'hours'}
+                {minutes < 60 ? t('min') : minutes === 60 ? t('hour') : t('hours')}
               </Text>
             </Pressable>
           );
@@ -347,12 +385,12 @@ export function HomeScreen({
 
       <View style={[styles.customRow, {backgroundColor: theme.surface, borderColor: theme.border}]}>
         <View>
-          <Text style={[styles.customLabel, {color: theme.text}]}>Custom duration</Text>
-          <Text style={[styles.customHint, {color: theme.textSubtle}]}>1 minute to 24 hours</Text>
+          <Text style={[styles.customLabel, {color: theme.text}]}>{t('Custom duration')}</Text>
+          <Text style={[styles.customHint, {color: theme.textSubtle}]}>{t('1 minute to 24 hours')}</Text>
         </View>
         <View style={[styles.customInputWrap, {backgroundColor: theme.surfaceMuted}]}>
           <TextInput
-            accessibilityLabel="Custom focus duration in minutes"
+            accessibilityLabel={t('Custom focus duration in minutes')}
             value={custom}
             onChangeText={value => {
               const digits = value.replace(/[^0-9]/g, '');
@@ -367,11 +405,11 @@ export function HomeScreen({
             selectTextOnFocus
             style={[styles.customInput, {color: theme.text}]}
           />
-          <Text style={[styles.customSuffix, {color: theme.textMuted}]}>min</Text>
+          <Text style={[styles.customSuffix, {color: theme.textMuted}]}>{t('min')}</Text>
         </View>
       </View>
 
-      <SectionTitle theme={theme} detail="Optional">Start time</SectionTitle>
+      <SectionTitle theme={theme} detail={t('Optional')}>{t('Start time')}</SectionTitle>
       <View style={styles.scheduleRow}>
         {[0, 15, 60].map(delay => {
           const active = startDelayMinutes === delay;
@@ -391,7 +429,7 @@ export function HomeScreen({
                 {active ? <View style={[styles.scheduleRadioFill, {backgroundColor: theme.primary}]} /> : null}
               </View>
               <Text style={[styles.scheduleText, {color: active ? theme.primary : theme.text}]}>
-                {delay === 0 ? 'Now' : `+${formatMinutes(delay)}`}
+                {delay === 0 ? t('Now') : `+${formatMinutes(delay, t)}`}
               </Text>
             </Pressable>
           );
@@ -400,9 +438,9 @@ export function HomeScreen({
 
       <Card theme={theme} tone="accent" style={styles.summaryCard}>
         <View>
-          <Text style={[styles.summaryEyebrow, {color: theme.primary}]}>READY WHEN YOU ARE</Text>
-          <Text style={[styles.summaryTitle, {color: theme.text}]}>{formatMinutes(durationMinutes)} of protected time</Text>
-          <Text style={[styles.summaryMeta, {color: theme.textMuted}]}>Ends at {endTime}</Text>
+          <Text style={[styles.summaryEyebrow, {color: theme.primary}]}>{t('READY WHEN YOU ARE')}</Text>
+          <Text style={[styles.summaryTitle, {color: theme.text}]}>{t('{d} of protected time', {d: formatMinutes(durationMinutes, t)})}</Text>
+          <Text style={[styles.summaryMeta, {color: theme.textMuted}]}>{t('Ends at {time}', {time: endTime})}</Text>
         </View>
         <View style={[styles.summaryFocusIcon, {borderColor: theme.primary}]}>
           <View style={[styles.summaryFocusDot, {backgroundColor: theme.primary}]} />
@@ -410,7 +448,7 @@ export function HomeScreen({
       </Card>
 
       <PrimaryButton
-        label={`Start ${formatMinutes(durationMinutes)} focus`}
+        label={t('Start {d} focus', {d: formatMinutes(durationMinutes, t)})}
         trailing="→"
         onPress={start}
         theme={theme}
@@ -418,7 +456,7 @@ export function HomeScreen({
         loading={busy}
       />
       {!selectedApps.length ? (
-        <Text style={[styles.startHint, {color: theme.textSubtle}]}>Choose at least one app to begin.</Text>
+        <Text style={[styles.startHint, {color: theme.textSubtle}]}>{t('Choose at least one app to begin.')}</Text>
       ) : null}
     </ScrollView>
   );
@@ -426,6 +464,7 @@ export function HomeScreen({
 
 const styles = StyleSheet.create({
   content: {paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xxxl},
+  activeContent: {paddingTop: spacing.md},
   pressed: {opacity: 0.72, transform: [{scale: 0.99}]},
   permissionCard: {minHeight: 80, borderRadius: radii.lg, borderWidth: 1, padding: spacing.md, flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xl},
   permissionIcon: {width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
@@ -474,25 +513,51 @@ const styles = StyleSheet.create({
   summaryFocusIcon: {width: 46, height: 46, borderRadius: 23, borderWidth: 2, alignItems: 'center', justifyContent: 'center'},
   summaryFocusDot: {width: 12, height: 12, borderRadius: 6},
   startHint: {fontSize: 11, textAlign: 'center', marginTop: spacing.sm},
-  activeHeader: {marginBottom: spacing.xl},
-  activeTitle: {fontSize: 34, lineHeight: 40, fontWeight: '800', letterSpacing: -1, marginTop: spacing.md},
-  activeSubtitle: {fontSize: 15, lineHeight: 22, marginTop: spacing.xs},
-  timerCard: {padding: spacing.xl, marginBottom: spacing.md},
-  timerHalo: {width: 244, height: 244, borderRadius: 122, alignSelf: 'center', alignItems: 'center', justifyContent: 'center'},
-  timerRing: {width: 212, height: 212, borderRadius: 106, borderWidth: 7, alignItems: 'center', justifyContent: 'center'},
-  timerLabel: {fontSize: 10, fontWeight: '800', letterSpacing: 1.6, marginBottom: spacing.xs},
-  timer: {fontSize: 38, fontWeight: '300', letterSpacing: 0.5, fontVariant: ['tabular-nums']},
-  timerDivider: {height: 1, marginVertical: spacing.lg},
+  activeHeader: {marginBottom: spacing.lg},
+  activeMetaRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+  sessionMonogram: {flexDirection: 'row', alignItems: 'center', gap: 7},
+  sessionMonogramLine: {width: 18, height: 2, borderRadius: 2},
+  sessionMonogramText: {fontSize: 9, fontWeight: '900', letterSpacing: 1.7},
+  activeTitle: {fontSize: 38, lineHeight: 44, fontWeight: '900', letterSpacing: -1.5, marginTop: spacing.lg},
+  activeSubtitle: {fontSize: 15, lineHeight: 22, fontWeight: '500', marginTop: spacing.xs, maxWidth: 330},
+  timerCard: {padding: spacing.lg, marginBottom: spacing.md, shadowOpacity: 0.38, shadowRadius: 28},
+  timerCornerGlow: {position: 'absolute', width: 130, height: 130, borderRadius: 65, top: -86, right: -56, opacity: 0.14},
+  timerCardHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md},
+  timerCardEyebrow: {fontSize: 9, fontWeight: '900', letterSpacing: 1.8},
+  livePill: {minHeight: 25, borderRadius: radii.pill, borderWidth: 1, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 6},
+  liveDot: {width: 5, height: 5, borderRadius: 3},
+  liveText: {fontSize: 9, fontWeight: '900', letterSpacing: 1},
+  timerHalo: {width: 250, height: 250, borderRadius: 125, borderWidth: 1, alignSelf: 'center', alignItems: 'center', justifyContent: 'center'},
+  timerOuterRing: {position: 'absolute', width: 230, height: 230, borderRadius: 115, borderWidth: 1},
+  tickAnchor: {position: 'absolute', width: 230, height: 230, top: -1, left: -1, alignItems: 'center'},
+  timerTick: {width: 2, height: 7, borderRadius: 2, marginTop: 7},
+  timerRing: {width: 202, height: 202, borderRadius: 101, borderWidth: 4, alignItems: 'center', justifyContent: 'center', elevation: 9, shadowColor: '#000000', shadowOffset: {width: 0, height: 9}, shadowOpacity: 0.38, shadowRadius: 16},
+  timerLabel: {fontSize: 9, fontWeight: '900', letterSpacing: 2.1, marginBottom: spacing.xs},
+  timer: {fontSize: 39, fontWeight: '300', letterSpacing: -0.3, fontVariant: ['tabular-nums']},
+  timerModeRow: {flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.sm},
+  timerModeDot: {width: 5, height: 5, borderRadius: 3},
+  timerModeText: {fontSize: 8, fontWeight: '800', letterSpacing: 1.3},
+  timerDivider: {height: 1, marginVertical: spacing.lg, opacity: 0.8},
   timerFooter: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+  timerMetric: {flexDirection: 'row', alignItems: 'center', gap: 10},
+  metricIcon: {width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center'},
+  metricClock: {width: 17, height: 17, borderRadius: 9, borderWidth: 1.5, alignItems: 'center'},
+  metricHand: {width: 1.5, height: 5, borderRadius: 1, marginTop: 3, transform: [{rotate: '-18deg'}]},
+  appsMetric: {alignItems: 'flex-end', gap: 7},
   timerFooterLabel: {fontSize: 9, fontWeight: '800', letterSpacing: 1.3},
   timerFooterValue: {fontSize: 16, fontWeight: '700', marginTop: 3},
-  stackCount: {width: 36, height: 36, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center'},
+  stackCount: {width: 32, height: 32, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center'},
   stackCountText: {fontSize: 10, fontWeight: '800'},
-  protectionCard: {flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md},
+  protectionCard: {flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md, paddingVertical: 17},
   resumeButton: {marginBottom: spacing.sm},
-  protectionIcon: {width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
-  protectionDot: {width: 12, height: 12, borderRadius: 6},
+  protectionIcon: {width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center'},
+  shieldTop: {position: 'absolute', width: 20, height: 22, borderWidth: 1.5, borderRadius: 8, transform: [{rotate: '45deg'}]},
+  shieldCheck: {fontSize: 13, fontWeight: '900'},
   protectionCopy: {flex: 1, marginLeft: spacing.sm},
   protectionTitle: {fontSize: 14, fontWeight: '700', marginBottom: 3},
   protectionBody: {fontSize: 12, lineHeight: 17},
+  protectionState: {height: 25, borderRadius: radii.pill, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 5, marginLeft: spacing.xs},
+  protectionStateDot: {width: 5, height: 5, borderRadius: 3},
+  protectionStateText: {fontSize: 8, fontWeight: '900', letterSpacing: 0.8},
+  stopGlyph: {width: 10, height: 10, borderRadius: 2, borderWidth: 2},
 });

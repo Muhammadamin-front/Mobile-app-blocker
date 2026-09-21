@@ -183,7 +183,7 @@ export function IntroScreen({ready, onDone}: IntroScreenProps) {
 
       <Animated.View
         accessible
-        accessibilityLabel="FocusGuard is loading"
+        accessibilityLabel="Qoriqchi is loading"
         accessibilityLiveRegion="polite"
         style={[
           styles.loading,
@@ -199,7 +199,7 @@ export function IntroScreen({ready, onDone}: IntroScreenProps) {
             ],
           },
         ]}>
-        <Text style={styles.brand}>FOCUSGUARD</Text>
+        <Text style={styles.brand}>QORIQCHI</Text>
         <View style={styles.loadingRow}>
           <Text style={styles.loadingText}>Loading</Text>
           <View accessibilityElementsHidden style={styles.dots}>

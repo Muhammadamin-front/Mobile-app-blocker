@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name is the brand and stays the same in every language. -->
+    <string name="accessibility_service_label">Qoriqchi ilova bloklash</string>
+    <string name="accessibility_service_description">Faol, qurilmada saqlangan ro\'yxatdagi ilova ochilganini aniqlaydi va Qoriqchi bloklash ekranini ko\'rsatadi. Ekran mazmunini o\'qimaydi.</string>
+    <string name="block_mode_label">FOKUS REJIMI</string>
+    <string name="block_title">Niyatingizda qoling.</string>
+    <string name="block_app_message">%1$s hozir bloklangan.</string>
+    <string name="block_remaining_label">QOLDI</string>
+    <string name="block_home_button">Bosh ekranga</string>
+    <string name="block_protection_note">Qoriqchi shu lahzani qo\'riqlamoqda</string>
+    <string name="block_native_status">Himoya faol</string>
+    <string name="notification_channel_name">Faol fokus sessiyasi</string>
+    <string name="notification_channel_description">Fokus sessiyasi davomida qolgan vaqtni ko\'rsatadi.</string>
+    <string name="notification_title">Fokus rejimi</string>
+    <string name="notification_scheduled_title">Fokus rejalashtirilgan</string>
+    <string name="notification_blocked_apps">%1$d ilova bloklangan</string>
+    <string name="notification_blocked_apps_plural">%1$d ilova bloklangan</string>
+    <string name="notification_starts_soon">Tez orada boshlanadi</string>
+</resources>

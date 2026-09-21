@@ -39,13 +39,19 @@ export function formatDuration(totalMillis: number): string {
     .join(':');
 }
 
-export function formatMinutes(minutes: number): string {
+export function formatMinutes(
+  minutes: number,
+  translate: (english: string, params?: Record<string, string | number>) => string =
+    english => english,
+): string {
   if (minutes < 60) {
-    return `${minutes} min`;
+    return translate('{n} min', {n: minutes});
   }
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
-  return remainder ? `${hours}h ${remainder}m` : `${hours} hr`;
+  return remainder
+    ? `${hours}h ${remainder}m`
+    : translate('{n} hr', {n: hours});
 }
 
 /** Compact total for the statistics tiles: minutes below an hour, one decimal above. */

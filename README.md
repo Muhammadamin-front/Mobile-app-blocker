@@ -1,6 +1,6 @@
-# FocusGuard
+# Qoriqchi
 
-FocusGuard is an Android-first, completely offline React Native focus app. Users choose launchable apps, schedule a focus session, and receive a native blocking screen when a selected app is opened. No account, backend, analytics SDK, or network service is used.
+Qoriqchi (formerly Qoriqchi) is an Android-first, completely offline React Native focus app. Users choose launchable apps, schedule a focus session, and receive a native blocking screen when a selected app is opened. No account, backend, analytics SDK, or network service is used.
 
 ## Status and supported platform
 
@@ -21,7 +21,7 @@ React Native UI
           └─ nativeAppBlockingService (Android adapter today, Swift adapter later)
                     │
 Android/Kotlin
-  ├─ FocusGuardModule           React Native bridge and launcher app discovery
+  ├─ QoriqchiModule           React Native bridge and launcher app discovery
   ├─ FocusDatabase              SQLite source of truth
   ├─ FocusAccessibilityService  package-level foreground detection/enforcement
   ├─ BlockActivity              non-exported native blocking UI
@@ -34,7 +34,7 @@ SQLite is native intentionally: the accessibility service must restore and enfor
 
 ## Android enforcement choice
 
-FocusGuard uses a narrowly scoped `AccessibilityService` configured only for `TYPE_WINDOW_STATE_CHANGED`. It compares the event's package name with the active local block list and opens a non-exported native `BlockActivity`. It explicitly sets `canRetrieveWindowContent=false`; it never reads view trees, text, keystrokes, taps, messages, passwords, or screen content.
+Qoriqchi uses a narrowly scoped `AccessibilityService` configured only for `TYPE_WINDOW_STATE_CHANGED`. It compares the event's package name with the active local block list and opens a non-exported native `BlockActivity`. It explicitly sets `canRetrieveWindowContent=false`; it never reads view trees, text, keystrokes, taps, messages, passwords, or screen content.
 
 Why this mechanism:
 
@@ -44,11 +44,11 @@ Why this mechanism:
 - A foreground service does not itself identify or prevent another foreground app, and newer Android versions restrict background starts.
 - VPN/DNS blocking only affects network traffic and cannot block offline app use.
 
-Android does not provide a public, unbypassable consumer API equivalent to managed enterprise app suspension. This design is a best-effort focus aid: the user can always disable Accessibility access or uninstall FocusGuard, and FocusGuard must not interfere with those controls.
+Android does not provide a public, unbypassable consumer API equivalent to managed enterprise app suspension. This design is a best-effort focus aid: the user can always disable Accessibility access or uninstall Qoriqchi, and Qoriqchi must not interfere with those controls.
 
 Two limits are worth stating plainly, because both were observed on a device:
 
-- **Force-stopping FocusGuard disables its accessibility service.** Android clears the service from `enabled_accessibility_services` and does not rebind it; the user must re-enable it in Settings. Aggressive vendor battery managers can trigger the same path. FocusGuard cannot prevent this, so instead it detects the lost permission and says so rather than showing a session it is no longer enforcing.
+- **Force-stopping Qoriqchi disables its accessibility service.** Android clears the service from `enabled_accessibility_services` and does not rebind it; the user must re-enable it in Settings. Aggressive vendor battery managers can trigger the same path. Qoriqchi cannot prevent this, so instead it detects the lost permission and says so rather than showing a session it is no longer enforcing.
 - **Background activity starts are not guaranteed.** Launching the block screen works on AOSP and Google builds, but some vendors restrict it further, which is why the service falls back to the home action.
 
 Official references:
@@ -110,7 +110,7 @@ the only way to read a value.
 ## The session timer outside the app
 
 While a session runs, the remaining time sits in the status bar and on the lock
-screen so the user never has to reopen FocusGuard to check it.
+screen so the user never has to reopen Qoriqchi to check it.
 
 - The countdown is handed to the system as a chronometer, so it keeps ticking
   with the process idle and costs nothing to redraw.
@@ -127,6 +127,24 @@ screen so the user never has to reopen FocusGuard to check it.
   reason is on screen. Refusing it does not affect blocking; the session simply
   runs without a visible timer.
 
+## Two languages
+
+The app ships in English and Uzbek, and the choice is one setting rather than two
+mechanisms.
+
+- The React Native layer translates through `src/i18n`, keyed by the English
+  string. A missing entry falls back to that English, so a copy change on one side
+  degrades to readable rather than to a raw key on screen.
+- The native side keeps its own `values/` and `values-uz/` resources, including the
+  block-screen quotes.
+- Choosing a language calls `AppCompatDelegate.setApplicationLocales`, so the block
+  screen and the timer notification follow the in-app choice instead of the phone's
+  language. The stored choice is re-applied when the module initializes, and
+  `locales_config.xml` also exposes the per-app language picker in Android 13+
+  system settings.
+- The brand name, the countdown format, and the `h`/`m` abbreviations are marked
+  `translatable="false"` or left as they are: they carry no language.
+
 ## Screen time (optional)
 
 `PACKAGE_USAGE_STATS` is declared but never required. Blocking, sessions, history,
@@ -139,7 +157,7 @@ breakdown on the Progress tab.
 - Foreground time is read with `UsageStatsManager` over the same window as the
   chart. Android keeps less detail the further back a window reaches, so a long
   range shows the best it can still account for, and the UI says so.
-- FocusGuard's own package is left out: time spent reading the report is not a
+- Qoriqchi's own package is left out: time spent reading the report is not a
   distraction.
 - Nothing read here is stored, aggregated over time, or transmitted. It is
   queried on demand and rendered.
@@ -199,7 +217,7 @@ npm test -- --runInBand
 cd android && ./gradlew assembleDebug
 ```
 
-Install with `npm run android`, complete the in-app disclosure, then enable **FocusGuard app blocking** in Android Accessibility settings.
+Install with `npm run android`, complete the in-app disclosure, then enable **Qoriqchi app blocking** in Android Accessibility settings.
 
 ### Sideloading a release build for testing
 
@@ -212,21 +230,22 @@ Run on at least one AOSP/Pixel device and representative Samsung/Xiaomi devices 
 - [ ] Deny/leave Accessibility disabled: Start remains unavailable and UI never claims access is enabled.
 - [ ] Accept disclosure and enable the named service; returning to the app automatically verifies it.
 - [ ] Confirm the app picker shows launchable apps with icon, name, package, search, multi-select, Select all, and Clear.
-- [ ] Confirm FocusGuard, Settings, the launcher, default dialer, and core permission/system packages are absent.
+- [ ] Confirm Qoriqchi, Settings, the launcher, default dialer, and core permission/system packages are absent.
 - [ ] Start a 15-minute session; rapidly tap Start and verify only one session exists.
 - [ ] Open a blocked app; verify the native screen appears promptly with the correct app name and countdown.
 - [ ] Press Back and **Back to Home**; both go to the launcher without revealing a usable blocked app.
 - [ ] Repeatedly select the blocked app from Recents; verify no crash or activity loop.
 - [ ] Open an allowed app and verify it remains usable.
-- [ ] Swipe FocusGuard away from Recents (do not force-stop); open a blocked app and verify enforcement continues.
-- [ ] Force-stop FocusGuard from App info; confirm Android disables the accessibility service, that blocking stops, and that FocusGuard reports the lost permission instead of claiming the session is still enforced.
-- [ ] Reopen FocusGuard and verify the active session and countdown restore.
+- [ ] Swipe Qoriqchi away from Recents (do not force-stop); open a blocked app and verify enforcement continues.
+- [ ] Force-stop Qoriqchi from App info; confirm Android disables the accessibility service, that blocking stops, and that Qoriqchi reports the lost permission instead of claiming the session is still enforced.
+- [ ] Reopen Qoriqchi and verify the active session and countdown restore.
 - [ ] Change timezone and wall clock during a session; verify same-boot expiry follows elapsed time.
-- [ ] Reboot during a session; verify the session restores, that a blocked app still opens into the block screen without reopening FocusGuard, that the timer notification comes back, and that the time spent rebooting was deducted from the session.
-- [ ] Let the session expire while outside FocusGuard; verify the formerly blocked app opens.
-- [ ] Revoke Accessibility during a session; verify Android accepts the revocation and FocusGuard reports it disabled on return.
-- [ ] Uninstall a blocked app; verify FocusGuard remains stable and history is readable.
+- [ ] Reboot during a session; verify the session restores, that a blocked app still opens into the block screen without reopening Qoriqchi, that the timer notification comes back, and that the time spent rebooting was deducted from the session.
+- [ ] Let the session expire while outside Qoriqchi; verify the formerly blocked app opens.
+- [ ] Revoke Accessibility during a session; verify Android accepts the revocation and Qoriqchi reports it disabled on return.
+- [ ] Uninstall a blocked app; verify Qoriqchi remains stable and history is readable.
 - [ ] Test light/dark/system themes and Reset local data.
+- [ ] Switch the language and confirm the tab bar, both confirmation dialogs, the block screen, and the timer notification all follow it — including after force-stopping and reopening.
 - [ ] Start a session, leave the app, and confirm the countdown is readable in the status bar, the shade, and the lock screen, and that it never makes a sound.
 - [ ] End the session and confirm the notification and its status bar icon both disappear.
 - [ ] Deny the notification permission and confirm the session still starts, blocks, and expires normally.

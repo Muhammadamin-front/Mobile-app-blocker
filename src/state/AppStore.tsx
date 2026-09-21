@@ -12,6 +12,12 @@ import {AppState} from 'react-native';
 
 import {IconMap, missingIconPackages, withIcons} from '../domain/icons';
 import {
+  createTranslator,
+  LanguagePreference,
+  resolveLanguage,
+  Translate,
+} from '../i18n';
+import {
   AppSettings,
   FocusSession,
   FocusTrends,
@@ -65,6 +71,9 @@ interface AppStoreValue {
   permission: PermissionStatus;
   onboardingCompleted: boolean;
   themePreference: ThemePreference;
+  language: LanguagePreference;
+  t: Translate;
+  setLanguage(language: LanguagePreference): Promise<void>;
   refresh(): Promise<void>;
   setTrendRange(range: TrendRange): void;
   loadInstalledApps(): Promise<void>;
@@ -102,6 +111,7 @@ export function AppStoreProvider({children}: PropsWithChildren) {
   const [settings, setSettings] = useState<AppSettings>({
     onboardingCompleted: false,
     themePreference: 'system',
+    language: 'system',
   });
   // Icons live outside the database, so they are resolved per package and cached
   // here. Packages we already asked about are remembered even when the platform
@@ -319,6 +329,14 @@ export function AppStoreProvider({children}: PropsWithChildren) {
     [run],
   );
 
+  const setLanguage = useCallback(
+    async (language: LanguagePreference) => {
+      setSettings(current => ({...current, language}));
+      await run(() => appBlockingService.setLanguagePreference(language));
+    },
+    [run],
+  );
+
   const resetAllData = useCallback(async () => {
     setBusy(true);
     await run(async () => {
@@ -331,7 +349,7 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       setStats(emptyStats);
       setTrends(emptyTrends);
       setScreenTime(emptyScreenTime);
-      setSettings({onboardingCompleted: false, themePreference: 'system'});
+      setSettings({onboardingCompleted: false, themePreference: 'system', language: 'system'});
     });
     setBusy(false);
   }, [run]);
@@ -347,6 +365,13 @@ export function AppStoreProvider({children}: PropsWithChildren) {
         ? {...activeSession, blockedApps: withIcons(activeSession.blockedApps, icons)}
         : null,
     [activeSession, icons],
+  );
+
+  // Recreated only when the resolved language changes, so every screen reading `t`
+  // re-renders exactly once on a language switch.
+  const translate = useMemo(
+    () => createTranslator(resolveLanguage(settings.language, settings.deviceLanguage)),
+    [settings.deviceLanguage, settings.language],
   );
 
   const value = useMemo<AppStoreValue>(
@@ -367,6 +392,9 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       permission,
       onboardingCompleted: settings.onboardingCompleted,
       themePreference: settings.themePreference,
+      language: settings.language,
+      t: translate,
+      setLanguage,
       refresh,
       loadInstalledApps,
       setSelectedApps: updateSelectedApps,
@@ -395,7 +423,9 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       refresh,
       resetAllData,
       screenTime,
+      setLanguage,
       settings,
+      translate,
       startSession,
       stats,
       stopSession,

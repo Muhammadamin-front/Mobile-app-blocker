@@ -22,6 +22,7 @@ export function PrimaryButton({
   disabled,
   loading,
   variant = 'primary',
+  leading,
   trailing,
 }: {
   label: string;
@@ -30,6 +31,7 @@ export function PrimaryButton({
   disabled?: boolean;
   loading?: boolean;
   variant?: ButtonVariant;
+  leading?: React.ReactNode;
   trailing?: string;
 }) {
   const colors = {
@@ -61,6 +63,7 @@ export function PrimaryButton({
         <ActivityIndicator color={colors.foreground} />
       ) : (
         <View style={styles.buttonContent}>
+          {leading}
           <Text style={[styles.primaryLabel, {color: colors.foreground}]}>{label}</Text>
           {trailing ? <Text style={[styles.buttonTrailing, {color: colors.foreground}]}>{trailing}</Text> : null}
         </View>
@@ -110,7 +113,7 @@ export function Card({
 export function BrandMark({theme, size = 54}: {theme: Theme; size?: number}) {
   return (
     <View
-      accessibilityLabel="FocusGuard"
+      accessibilityLabel="Qoriqchi"
       style={[
         styles.brandMark,
         {
@@ -207,10 +210,12 @@ export function StatusBadge({
   label,
   theme,
   tone = 'neutral',
+  onBright = false,
 }: {
   label: string;
   theme: Theme;
   tone?: 'neutral' | 'success' | 'warning' | 'primary' | 'danger';
+  onBright?: boolean;
 }) {
   const palette = {
     neutral: [theme.surfaceMuted, theme.textMuted],
@@ -220,9 +225,16 @@ export function StatusBadge({
     danger: [theme.dangerSoft, theme.danger],
   }[tone];
   return (
-    <View style={[styles.badge, {backgroundColor: palette[0]}]}>
+    <View
+      style={[
+        styles.badge,
+        {
+          backgroundColor: onBright ? `${theme.background}16` : palette[0],
+          borderColor: onBright ? `${theme.background}1F` : '#FFFFFF12',
+        },
+      ]}>
       <View style={[styles.badgeDot, {backgroundColor: palette[1]}]} />
-      <Text style={[styles.badgeText, {color: palette[1]}]}>{label}</Text>
+      <Text style={[styles.badgeText, {color: onBright ? theme.background : palette[1]}]}>{label}</Text>
     </View>
   );
 }
@@ -291,8 +303,8 @@ export function EmptyState({
 
 const styles = StyleSheet.create({
   primaryButton: {
-    minHeight: 58,
-    borderRadius: radii.md,
+    minHeight: 60,
+    borderRadius: 18,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -300,17 +312,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   primaryButtonEmphasis: {
-    elevation: 5,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.22,
-    shadowRadius: 15,
+    elevation: 8,
+    shadowOffset: {width: 0, height: 10},
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
   },
-  primaryLabel: {fontSize: 16, fontWeight: '700', letterSpacing: 0.1},
+  primaryLabel: {fontSize: 15, fontWeight: '800', letterSpacing: 0.2},
   buttonContent: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
   buttonTrailing: {fontSize: 20, fontWeight: '400', marginTop: -2},
   disabled: {opacity: 0.42},
   pressed: {transform: [{scale: 0.985}], opacity: 0.92},
-  card: {borderRadius: radii.lg, borderWidth: 1, padding: spacing.lg, overflow: 'hidden'},
+  card: {borderRadius: 26, borderWidth: 1, padding: spacing.lg, overflow: 'hidden'},
   cardSheen: {
     position: 'absolute',
     top: 0,
@@ -337,9 +349,9 @@ const styles = StyleSheet.create({
   sectionHeading: {flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: spacing.sm},
   sectionTitle: {fontSize: 18, fontWeight: '700', letterSpacing: -0.25},
   sectionDetail: {fontSize: 12, fontWeight: '600'},
-  badge: {alignSelf: 'flex-start', borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 6},
+  badge: {alignSelf: 'flex-start', borderRadius: radii.pill, borderWidth: 1, borderColor: '#FFFFFF12', paddingHorizontal: 11, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 7},
   badgeDot: {width: 6, height: 6, borderRadius: 3},
-  badgeText: {fontSize: 11, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase'},
+  badgeText: {fontSize: 10, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase'},
   focusIconOuter: {width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center'},
   focusIconInner: {width: 7, height: 7, borderRadius: 4},
   gridIcon: {width: 22, height: 22, flexDirection: 'row', flexWrap: 'wrap', gap: 4},

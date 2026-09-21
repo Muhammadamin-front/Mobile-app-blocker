@@ -1,4 +1,7 @@
+import {LanguagePreference} from '../i18n';
+
 export type ThemePreference = 'system' | 'light' | 'dark';
+export type {LanguagePreference};
 export type SessionStatus = 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'STOPPED';
 
 export interface InstalledApp {
@@ -30,6 +33,9 @@ export interface PermissionStatus {
 export interface AppSettings {
   onboardingCompleted: boolean;
   themePreference: ThemePreference;
+  language: LanguagePreference;
+  /** What the phone is set to, so 'system' resolves without guessing. */
+  deviceLanguage?: string;
 }
 
 export interface FocusStats {

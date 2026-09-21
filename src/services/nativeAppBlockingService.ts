@@ -1,5 +1,6 @@
 import {NativeModules, PermissionsAndroid, Platform} from 'react-native';
 
+import {LanguagePreference} from '../i18n';
 import {IconMap, withoutIcons} from '../domain/icons';
 
 import {
@@ -34,6 +35,7 @@ interface NativeFocusGuardModule {
   getSettings(): Promise<AppSettings>;
   completeOnboarding(): Promise<void>;
   setThemePreference(theme: ThemePreference): Promise<void>;
+  setLanguagePreference(language: LanguagePreference): Promise<void>;
   resetAllData(): Promise<void>;
 }
 
@@ -91,5 +93,7 @@ export const appBlockingService: AppBlockingService = {
   completeOnboarding: () => getNativeModule().completeOnboarding(),
   setThemePreference: theme =>
     getNativeModule().setThemePreference(theme),
+  setLanguagePreference: language =>
+    getNativeModule().setLanguagePreference(language),
   resetAllData: () => getNativeModule().resetAllData(),
 };

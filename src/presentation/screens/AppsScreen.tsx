@@ -19,7 +19,8 @@ function AppSeparator() {
 }
 
 export function AppsScreen({theme}: {theme: Theme}) {
-  const {busy, installedApps, selectedApps, loadInstalledApps, setSelectedApps} = useAppStore();
+  const {busy, installedApps, selectedApps, loadInstalledApps, setSelectedApps, t} =
+    useAppStore();
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -50,9 +51,9 @@ export function AppsScreen({theme}: {theme: Theme}) {
       <View style={styles.topContent}>
         <ScreenHeader
           theme={theme}
-          eyebrow="BLOCK LIST"
-          title="Quiet the noise."
-          subtitle="Choose the apps that are most likely to interrupt your intention."
+          eyebrow={t('BLOCK LIST')}
+          title={t('Quiet the noise.')}
+          subtitle={t('Choose the apps that are most likely to interrupt your intention.')}
         />
 
         <View
@@ -65,17 +66,17 @@ export function AppsScreen({theme}: {theme: Theme}) {
             <View style={[styles.searchHandle, {backgroundColor: theme.textSubtle}]} />
           </View>
           <TextInput
-            accessibilityLabel="Search installed apps"
+            accessibilityLabel={t('Search installed apps')}
             value={query}
             onChangeText={setQuery}
-            placeholder="Search apps or package names"
+            placeholder={t('Search apps or package names')}
             placeholderTextColor={theme.textSubtle}
             autoCorrect={false}
             returnKeyType="search"
             style={[styles.searchInput, {color: theme.text}]}
           />
           {query ? (
-            <Pressable accessibilityLabel="Clear search" hitSlop={10} onPress={() => setQuery('')}>
+            <Pressable accessibilityLabel={t('Clear search')} hitSlop={10} onPress={() => setQuery('')}>
               <View style={[styles.clearSearch, {backgroundColor: theme.surfaceMuted}]}>
                 <Text style={[styles.clearSearchText, {color: theme.textMuted}]}>×</Text>
               </View>
@@ -89,17 +90,17 @@ export function AppsScreen({theme}: {theme: Theme}) {
               <Text style={[styles.selectionCountText, {color: theme.inverseText}]}>{selectedApps.length}</Text>
             </View>
             <View>
-              <Text style={[styles.selectionTitle, {color: theme.text}]}>Apps selected</Text>
-              <Text style={[styles.selectionSubtitle, {color: theme.textMuted}]}>Saved automatically</Text>
+              <Text style={[styles.selectionTitle, {color: theme.text}]}>{t('Apps selected')}</Text>
+              <Text style={[styles.selectionSubtitle, {color: theme.textMuted}]}>{t('Saved automatically')}</Text>
             </View>
           </View>
           <View style={styles.selectionActions}>
             <Pressable hitSlop={8} onPress={() => setSelectedApps(installedApps)}>
-              <Text style={[styles.actionText, {color: theme.primary}]}>All</Text>
+              <Text style={[styles.actionText, {color: theme.primary}]}>{t('All')}</Text>
             </Pressable>
             <View style={[styles.actionDivider, {backgroundColor: `${theme.primary}35`}]} />
             <Pressable hitSlop={8} onPress={() => setSelectedApps([])} disabled={!selectedApps.length}>
-              <Text style={[styles.actionText, {color: selectedApps.length ? theme.primary : theme.textSubtle}]}>Clear</Text>
+              <Text style={[styles.actionText, {color: selectedApps.length ? theme.primary : theme.textSubtle}]}>{t('Clear')}</Text>
             </Pressable>
           </View>
         </View>
@@ -110,8 +111,8 @@ export function AppsScreen({theme}: {theme: Theme}) {
           <View style={[styles.loadingIcon, {backgroundColor: theme.primarySoft}]}>
             <ActivityIndicator color={theme.primary} />
           </View>
-          <Text style={[styles.loadingTitle, {color: theme.text}]}>Finding your apps</Text>
-          <Text style={[styles.loadingBody, {color: theme.textMuted}]}>Only launchable apps will appear here.</Text>
+          <Text style={[styles.loadingTitle, {color: theme.text}]}>{t('Finding your apps')}</Text>
+          <Text style={[styles.loadingBody, {color: theme.textMuted}]}>{t('Only launchable apps will appear here.')}</Text>
         </View>
       ) : (
         <FlatList
@@ -160,8 +161,12 @@ export function AppsScreen({theme}: {theme: Theme}) {
             <EmptyState
               theme={theme}
               symbol={query ? '⌕' : '□'}
-              title={query ? 'No matching apps' : 'No launchable apps found'}
-              body={query ? 'Try a different name or package.' : 'FocusGuard could not find apps that can be opened.'}
+              title={query ? t('No matching apps') : t('No launchable apps found')}
+              body={
+                query
+                  ? t('Try a different name or package.')
+                  : t('Qoriqchi could not find apps that can be opened.')
+              }
             />
           }
         />

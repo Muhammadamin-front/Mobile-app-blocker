@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {Alert, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 
 import {ThemePreference} from '../../domain/models';
+import {LANGUAGE_OPTIONS} from '../../i18n';
 import {useAppStore} from '../../state/AppStore';
 import {radii, spacing, Theme} from '../../theme/theme';
 import {BrandMark, Card, PrimaryButton, ScreenHeader, SectionTitle, StatusBadge} from '../components';
@@ -21,14 +22,17 @@ export function SettingsScreen({theme}: {theme: Theme}) {
     openUsageAccessSettings,
     themePreference,
     setTheme,
+    language,
+    setLanguage,
     resetAllData,
+    t,
   } = useAppStore();
   const [showDisclosure, setShowDisclosure] = useState(false);
 
   const confirmReset = () => Alert.alert(
-    'Reset local data?',
+    t('Reset local data?'),
     'This ends any focus session and permanently removes selections, history, and statistics from this device.',
-    [{text: 'Cancel', style: 'cancel'}, {text: 'Reset', style: 'destructive', onPress: resetAllData}],
+    [{text: t('Cancel'), style: 'cancel'}, {text: t('Reset'), style: 'destructive', onPress: resetAllData}],
   );
 
   return (
@@ -37,12 +41,12 @@ export function SettingsScreen({theme}: {theme: Theme}) {
       contentContainerStyle={styles.content}>
       <ScreenHeader
         theme={theme}
-        eyebrow="PREFERENCES"
-        title="Make it yours."
-        subtitle="Manage protection, appearance, and the data that stays on this device."
+        eyebrow={t('PREFERENCES')}
+        title={t('Make it yours.')}
+        subtitle={t('Manage protection, appearance, and the data that stays on this device.')}
       />
 
-      <SectionTitle theme={theme}>Protection</SectionTitle>
+      <SectionTitle theme={theme}>{t('Protection')}</SectionTitle>
       <Card theme={theme} elevated style={styles.permissionCard}>
         <View style={styles.permissionHeader}>
           <View
@@ -64,59 +68,59 @@ export function SettingsScreen({theme}: {theme: Theme}) {
             </View>
           </View>
           <View style={styles.permissionCopy}>
-            <Text style={[styles.permissionTitle, {color: theme.text}]}>App blocking service</Text>
+            <Text style={[styles.permissionTitle, {color: theme.text}]}>{t('App blocking service')}</Text>
             <Text style={[styles.permissionBody, {color: theme.textMuted}]}>
               {permission.accessibilityEnabled
-                ? 'Ready to protect your focus sessions.'
-                : 'Enable access before starting a session.'}
+                ? t('Ready to protect your focus sessions.')
+                : t('Enable access before starting a session.')}
             </Text>
           </View>
           <StatusBadge
-            label={permission.accessibilityEnabled ? 'Ready' : 'Action needed'}
+            label={permission.accessibilityEnabled ? t('Ready') : t('Action needed')}
             theme={theme}
             tone={permission.accessibilityEnabled ? 'success' : 'warning'}
           />
         </View>
         <View style={[styles.divider, {backgroundColor: theme.border}]} />
         <PrimaryButton
-          label={permission.accessibilityEnabled ? 'Open Android settings' : 'Enable protection'}
+          label={permission.accessibilityEnabled ? t('Open Android settings') : t('Enable protection')}
           onPress={openPermissionSettings}
           theme={theme}
           variant={permission.accessibilityEnabled ? 'secondary' : 'primary'}
         />
         <Pressable accessibilityRole="button" onPress={refresh} style={styles.recheckButton}>
-          <Text style={[styles.recheckText, {color: theme.textMuted}]}>Recheck permission status</Text>
+          <Text style={[styles.recheckText, {color: theme.textMuted}]}>{t('Recheck permission status')}</Text>
         </Pressable>
       </Card>
 
       <Card theme={theme} style={styles.optionalCard}>
         <View style={styles.optionalHeader}>
           <View style={styles.permissionCopy}>
-            <Text style={[styles.permissionTitle, {color: theme.text}]}>Screen time (optional)</Text>
+            <Text style={[styles.permissionTitle, {color: theme.text}]}>{t('Screen time (optional)')}</Text>
             <Text style={[styles.permissionBody, {color: theme.textMuted}]}>
               {permission.usageAccessEnabled
-                ? 'Progress shows which apps held your attention.'
-                : 'Off. Blocking works exactly the same without it.'}
+                ? t('Progress shows which apps held your attention.')
+                : t('Off. Blocking works exactly the same without it.')}
             </Text>
           </View>
           <StatusBadge
-            label={permission.usageAccessEnabled ? 'On' : 'Off'}
+            label={permission.usageAccessEnabled ? t('On') : t('Off')}
             theme={theme}
             tone={permission.usageAccessEnabled ? 'success' : 'neutral'}
           />
         </View>
         <PrimaryButton
-          label={permission.usageAccessEnabled ? 'Manage usage access' : 'Turn on screen time'}
+          label={permission.usageAccessEnabled ? t('Manage usage access') : t('Turn on screen time')}
           onPress={openUsageAccessSettings}
           theme={theme}
           variant="secondary"
         />
       </Card>
 
-      <SectionTitle theme={theme}>Appearance</SectionTitle>
+      <SectionTitle theme={theme}>{t('Appearance')}</SectionTitle>
       <Card theme={theme} style={styles.appearanceCard}>
-        <Text style={[styles.controlLabel, {color: theme.text}]}>Color mode</Text>
-        <Text style={[styles.controlHint, {color: theme.textMuted}]}>Follow your phone or choose navy or black glass.</Text>
+        <Text style={[styles.controlLabel, {color: theme.text}]}>{t('Color mode')}</Text>
+        <Text style={[styles.controlHint, {color: theme.textMuted}]}>{t('Follow your phone or choose navy or black glass.')}</Text>
         <View style={[styles.segmented, {backgroundColor: theme.surfaceMuted}]}>
           {themeOptions.map(option => {
             const active = themePreference === option.value;
@@ -135,22 +139,56 @@ export function SettingsScreen({theme}: {theme: Theme}) {
                   },
                 ]}>
                 <Text style={[styles.segmentGlyph, {color: active ? theme.primary : theme.textSubtle}]}>{option.glyph}</Text>
-                <Text style={[styles.segmentLabel, {color: active ? theme.text : theme.textMuted}, active && styles.segmentLabelActive]}>{option.label}</Text>
+                <Text style={[styles.segmentLabel, {color: active ? theme.text : theme.textMuted}, active && styles.segmentLabelActive]}>{t(option.label)}</Text>
               </Pressable>
             );
           })}
         </View>
       </Card>
 
-      <SectionTitle theme={theme}>Privacy & data</SectionTitle>
+      <Card theme={theme} style={styles.appearanceCard}>
+        <Text style={[styles.controlLabel, {color: theme.text}]}>{t('Language')}</Text>
+        <Text style={[styles.controlHint, {color: theme.textMuted}]}>{t('Follow your phone or pick a language.')}</Text>
+        <View style={[styles.segmented, {backgroundColor: theme.surfaceMuted}]}>
+          {LANGUAGE_OPTIONS.map(option => {
+            const active = language === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="radio"
+                accessibilityState={{checked: active}}
+                onPress={() => setLanguage(option.value)}
+                style={[
+                  styles.segment,
+                  active && {
+                    backgroundColor: theme.surfaceRaised,
+                    borderColor: theme.border,
+                    shadowColor: theme.shadow,
+                  },
+                ]}>
+                <Text
+                  style={[
+                    styles.segmentLabel,
+                    {color: active ? theme.text : theme.textMuted},
+                    active && styles.segmentLabelActive,
+                  ]}>
+                  {t(option.label)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </Card>
+
+      <SectionTitle theme={theme}>{t('Privacy & data')}</SectionTitle>
       <Card theme={theme} style={styles.privacyCard}>
         <View style={styles.offlineRow}>
           <View style={[styles.offlineIcon, {backgroundColor: theme.successSoft}]}>
             <Text style={[styles.offlineGlyph, {color: theme.success}]}>✓</Text>
           </View>
           <View style={styles.offlineCopy}>
-            <Text style={[styles.rowTitle, {color: theme.text}]}>Private by default</Text>
-            <Text style={[styles.rowBody, {color: theme.textMuted}]}>No account, cloud sync, ads, or analytics.</Text>
+            <Text style={[styles.rowTitle, {color: theme.text}]}>{t('Private by default')}</Text>
+            <Text style={[styles.rowBody, {color: theme.textMuted}]}>{t('No account, cloud sync, ads, or analytics.')}</Text>
           </View>
         </View>
         <View style={[styles.divider, {backgroundColor: theme.border}]} />
@@ -160,15 +198,15 @@ export function SettingsScreen({theme}: {theme: Theme}) {
           onPress={() => setShowDisclosure(value => !value)}
           style={styles.disclosureHeader}>
           <View>
-            <Text style={[styles.rowTitle, {color: theme.text}]}>Accessibility disclosure</Text>
-            <Text style={[styles.rowBody, {color: theme.textMuted}]}>Review exactly what FocusGuard can access</Text>
+            <Text style={[styles.rowTitle, {color: theme.text}]}>{t('Accessibility disclosure')}</Text>
+            <Text style={[styles.rowBody, {color: theme.textMuted}]}>{t('Review exactly what Qoriqchi can access')}</Text>
           </View>
           <Text style={[styles.disclosureChevron, {color: theme.textSubtle}]}>{showDisclosure ? '⌃' : '⌄'}</Text>
         </Pressable>
         {showDisclosure ? (
           <View style={[styles.disclosureBody, {backgroundColor: theme.surfaceMuted}]}>
             <Text style={[styles.disclosureText, {color: theme.textMuted}]}>
-              FocusGuard reads only package names from window-change events to compare them with your local block list. It does not inspect screen content, type, tap, collect, sell, share, or transmit data. All records remain in the app’s private local database.
+              Qoriqchi reads only package names from window-change events to compare them with your local block list. It does not inspect screen content, type, tap, collect, sell, share, or transmit data. All records remain in the app’s private local database.
             </Text>
           </View>
         ) : null}
@@ -179,8 +217,8 @@ export function SettingsScreen({theme}: {theme: Theme}) {
           disabled={busy}
           style={[styles.resetRow, {backgroundColor: theme.dangerSoft}]}>
           <View>
-            <Text style={[styles.resetTitle, {color: theme.danger}]}>Reset local data</Text>
-            <Text style={[styles.resetBody, {color: theme.textMuted}]}>Selections, sessions, and statistics</Text>
+            <Text style={[styles.resetTitle, {color: theme.danger}]}>{t('Reset local data')}</Text>
+            <Text style={[styles.resetBody, {color: theme.textMuted}]}>{t('Selections, sessions, and statistics')}</Text>
           </View>
           <Text style={[styles.resetChevron, {color: theme.danger}]}>›</Text>
         </Pressable>
@@ -188,7 +226,7 @@ export function SettingsScreen({theme}: {theme: Theme}) {
 
       <View style={styles.footer}>
         <BrandMark theme={theme} size={38} />
-        <Text style={[styles.footerTitle, {color: theme.text}]}>FocusGuard</Text>
+        <Text style={[styles.footerTitle, {color: theme.text}]}>Qoriqchi</Text>
         <Text style={[styles.version, {color: theme.textSubtle}]}>Version 1.0 · Android · Offline</Text>
       </View>
     </ScrollView>
