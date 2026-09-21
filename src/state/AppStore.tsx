@@ -5,10 +5,12 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {AppState} from 'react-native';
 
+import {IconMap, missingIconPackages, withIcons} from '../domain/icons';
 import {
   AppSettings,
   FocusSession,
@@ -70,6 +72,19 @@ export function AppStoreProvider({children}: PropsWithChildren) {
     onboardingCompleted: false,
     themePreference: 'system',
   });
+  // Icons live outside the database, so they are resolved per package and cached
+  // here. Packages we already asked about are remembered even when the platform
+  // returned nothing, so a missing icon cannot become a request loop.
+  const [icons, setIcons] = useState<IconMap>({});
+  const requestedIcons = useRef<Set<string>>(new Set());
+  const mounted = useRef(true);
+
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
 
   const run = useCallback(async (operation: () => Promise<void>) => {
     try {
@@ -112,6 +127,46 @@ export function AppStoreProvider({children}: PropsWithChildren) {
     });
     return () => subscription.remove();
   }, [refresh]);
+
+  // A session is only worth showing as enforced while the service is really on.
+  // Force-stopping the app makes Android disable it, and nothing else tells us.
+  useEffect(() => {
+    if (!activeSession) {
+      return;
+    }
+    const timer = setInterval(() => {
+      appBlockingService
+        .getPermissionStatus()
+        .then(setPermission)
+        .catch(() => undefined);
+    }, 8_000);
+    return () => clearInterval(timer);
+  }, [activeSession]);
+
+  const iconTargets = useMemo(
+    () => [...selectedApps, ...(activeSession?.blockedApps ?? [])],
+    [activeSession, selectedApps],
+  );
+
+  useEffect(() => {
+    const missing = missingIconPackages(iconTargets, icons).filter(
+      packageName => !requestedIcons.current.has(packageName),
+    );
+    if (!missing.length) {
+      return;
+    }
+    // The result is kept even if this effect re-runs first: the packages are
+    // already marked as requested, so discarding it would lose them for good.
+    missing.forEach(packageName => requestedIcons.current.add(packageName));
+    appBlockingService
+      .getAppIcons(missing)
+      .then(loaded => {
+        if (mounted.current) {
+          setIcons(current => ({...current, ...loaded}));
+        }
+      })
+      .catch(() => undefined);
+  }, [iconTargets, icons]);
 
   const loadInstalledApps = useCallback(async () => {
     if (installedApps.length) {
@@ -188,6 +243,8 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       await appBlockingService.resetAllData();
       setSelectedAppsState([]);
       setActiveSession(null);
+      setIcons({});
+      requestedIcons.current.clear();
       setHistory([]);
       setStats(emptyStats);
       setSettings({onboardingCompleted: false, themePreference: 'system'});
@@ -195,14 +252,27 @@ export function AppStoreProvider({children}: PropsWithChildren) {
     setBusy(false);
   }, [run]);
 
+  const decoratedSelectedApps = useMemo(
+    () => withIcons(selectedApps, icons),
+    [icons, selectedApps],
+  );
+
+  const decoratedSession = useMemo(
+    () =>
+      activeSession
+        ? {...activeSession, blockedApps: withIcons(activeSession.blockedApps, icons)}
+        : null,
+    [activeSession, icons],
+  );
+
   const value = useMemo<AppStoreValue>(
     () => ({
       loading,
       busy,
       error,
       installedApps,
-      selectedApps,
-      activeSession,
+      selectedApps: decoratedSelectedApps,
+      activeSession: decoratedSession,
       history,
       stats,
       permission,
@@ -220,9 +290,10 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       clearError: () => setError(null),
     }),
     [
-      activeSession,
       busy,
       completeOnboarding,
+      decoratedSelectedApps,
+      decoratedSession,
       error,
       history,
       installedApps,
@@ -232,7 +303,6 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       permission,
       refresh,
       resetAllData,
-      selectedApps,
       settings,
       startSession,
       stats,

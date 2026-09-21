@@ -8,4 +8,6 @@
     <string name="block_remaining_label">REMAINING</string>
     <string name="block_initial_timer">00:00:00</string>
     <string name="block_home_button">Back to Home</string>
+    <string name="block_protection_note">FocusGuard is protecting this moment</string>
+    <string name="block_native_status">Native protection is active</string>
 </resources>

@@ -3,11 +3,25 @@ import {Alert, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native
 
 import {ThemePreference} from '../../domain/models';
 import {useAppStore} from '../../state/AppStore';
-import {Theme} from '../../theme/theme';
-import {Card, PrimaryButton} from '../components';
+import {radii, spacing, Theme} from '../../theme/theme';
+import {BrandMark, Card, PrimaryButton, ScreenHeader, SectionTitle, StatusBadge} from '../components';
+
+const themeOptions: Array<{value: ThemePreference; label: string; glyph: string}> = [
+  {value: 'system', label: 'Auto', glyph: 'A'},
+  {value: 'light', label: 'Light', glyph: '☀'},
+  {value: 'dark', label: 'Dark', glyph: '◐'},
+];
 
 export function SettingsScreen({theme}: {theme: Theme}) {
-  const {busy, permission, refresh, openPermissionSettings, themePreference, setTheme, resetAllData} = useAppStore();
+  const {
+    busy,
+    permission,
+    refresh,
+    openPermissionSettings,
+    themePreference,
+    setTheme,
+    resetAllData,
+  } = useAppStore();
   const [showDisclosure, setShowDisclosure] = useState(false);
 
   const confirmReset = () => Alert.alert(
@@ -17,67 +31,182 @@ export function SettingsScreen({theme}: {theme: Theme}) {
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
-      <Text style={[styles.title, {color: theme.text}]}>Settings</Text>
-      <Text style={[styles.section, {color: theme.text}]}>Permissions</Text>
-      <Card theme={theme} style={styles.card}>
-        <View style={styles.row}>
-          <View style={[styles.dot, {backgroundColor: permission.accessibilityEnabled ? theme.success : theme.danger}]} />
-          <View style={styles.rowCopy}>
-            <Text style={[styles.rowTitle, {color: theme.text}]}>Accessibility service</Text>
-            <Text style={[styles.rowBody, {color: theme.textMuted}]}>{permission.accessibilityEnabled ? 'Enabled and ready' : 'Disabled — blocking cannot run'}</Text>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.content}>
+      <ScreenHeader
+        theme={theme}
+        eyebrow="PREFERENCES"
+        title="Make it yours."
+        subtitle="Manage protection, appearance, and the data that stays on this device."
+      />
+
+      <SectionTitle theme={theme}>Protection</SectionTitle>
+      <Card theme={theme} elevated style={styles.permissionCard}>
+        <View style={styles.permissionHeader}>
+          <View
+            style={[
+              styles.permissionIcon,
+              {backgroundColor: permission.accessibilityEnabled ? theme.successSoft : theme.warningSoft},
+            ]}>
+            <View
+              style={[
+                styles.permissionRing,
+                {borderColor: permission.accessibilityEnabled ? theme.success : theme.warning},
+              ]}>
+              <View
+                style={[
+                  styles.permissionDot,
+                  {backgroundColor: permission.accessibilityEnabled ? theme.success : theme.warning},
+                ]}
+              />
+            </View>
+          </View>
+          <View style={styles.permissionCopy}>
+            <Text style={[styles.permissionTitle, {color: theme.text}]}>App blocking service</Text>
+            <Text style={[styles.permissionBody, {color: theme.textMuted}]}>
+              {permission.accessibilityEnabled
+                ? 'Ready to protect your focus sessions.'
+                : 'Enable access before starting a session.'}
+            </Text>
+          </View>
+          <StatusBadge
+            label={permission.accessibilityEnabled ? 'Ready' : 'Action needed'}
+            theme={theme}
+            tone={permission.accessibilityEnabled ? 'success' : 'warning'}
+          />
+        </View>
+        <View style={[styles.divider, {backgroundColor: theme.border}]} />
+        <PrimaryButton
+          label={permission.accessibilityEnabled ? 'Open Android settings' : 'Enable protection'}
+          onPress={openPermissionSettings}
+          theme={theme}
+          variant={permission.accessibilityEnabled ? 'secondary' : 'primary'}
+        />
+        <Pressable accessibilityRole="button" onPress={refresh} style={styles.recheckButton}>
+          <Text style={[styles.recheckText, {color: theme.textMuted}]}>Recheck permission status</Text>
+        </Pressable>
+      </Card>
+
+      <SectionTitle theme={theme}>Appearance</SectionTitle>
+      <Card theme={theme} style={styles.appearanceCard}>
+        <Text style={[styles.controlLabel, {color: theme.text}]}>Color mode</Text>
+        <Text style={[styles.controlHint, {color: theme.textMuted}]}>Follow your phone or choose a fixed look.</Text>
+        <View style={[styles.segmented, {backgroundColor: theme.surfaceMuted}]}>
+          {themeOptions.map(option => {
+            const active = themePreference === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="radio"
+                accessibilityState={{checked: active}}
+                onPress={() => setTheme(option.value)}
+                style={[
+                  styles.segment,
+                  active && {
+                    backgroundColor: theme.surfaceRaised,
+                    borderColor: theme.border,
+                    shadowColor: theme.shadow,
+                  },
+                ]}>
+                <Text style={[styles.segmentGlyph, {color: active ? theme.primary : theme.textSubtle}]}>{option.glyph}</Text>
+                <Text style={[styles.segmentLabel, {color: active ? theme.text : theme.textMuted}, active && styles.segmentLabelActive]}>{option.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </Card>
+
+      <SectionTitle theme={theme}>Privacy & data</SectionTitle>
+      <Card theme={theme} style={styles.privacyCard}>
+        <View style={styles.offlineRow}>
+          <View style={[styles.offlineIcon, {backgroundColor: theme.successSoft}]}>
+            <Text style={[styles.offlineGlyph, {color: theme.success}]}>✓</Text>
+          </View>
+          <View style={styles.offlineCopy}>
+            <Text style={[styles.rowTitle, {color: theme.text}]}>Private by default</Text>
+            <Text style={[styles.rowBody, {color: theme.textMuted}]}>No account, cloud sync, ads, or analytics.</Text>
           </View>
         </View>
-        <View style={styles.buttonGap} />
-        <PrimaryButton label={permission.accessibilityEnabled ? 'Open Android settings' : 'Grant access'} onPress={openPermissionSettings} />
-        <Pressable onPress={refresh}><Text style={[styles.textButton, {color: theme.primary}]}>Recheck permission</Text></Pressable>
-      </Card>
-
-      <Text style={[styles.section, {color: theme.text}]}>Appearance</Text>
-      <Card theme={theme} style={styles.themeCard}>
-        {(['system', 'light', 'dark'] as ThemePreference[]).map(value => (
-          <Pressable key={value} onPress={() => setTheme(value)} style={styles.themeOption}>
-            <Text style={[styles.themeLabel, {color: theme.text}]}>{value[0].toUpperCase() + value.slice(1)}</Text>
-            <View style={[styles.radio, {borderColor: themePreference === value ? theme.primary : theme.border}]}>{themePreference === value && <View style={[styles.radioFill, {backgroundColor: theme.primary}]} />}</View>
-          </Pressable>
-        ))}
-      </Card>
-
-      <Text style={[styles.section, {color: theme.text}]}>Privacy & data</Text>
-      <Card theme={theme} style={styles.card}>
-        <Pressable onPress={() => setShowDisclosure(value => !value)}>
-          <Text style={[styles.rowTitle, {color: theme.text}]}>Accessibility disclosure</Text>
-          <Text style={[styles.rowBody, {color: theme.textMuted}]}>{showDisclosure ? 'Hide details' : 'Review exactly what FocusGuard accesses'}</Text>
-        </Pressable>
-        {showDisclosure && <Text style={[styles.disclosure, {color: theme.textMuted}]}>FocusGuard reads only package names from window-change events to compare them with your local block list. It does not inspect screen content, type, tap, collect, sell, share, or transmit data. All records remain in the app’s private local database.</Text>}
         <View style={[styles.divider, {backgroundColor: theme.border}]} />
-        <Pressable onPress={confirmReset} disabled={busy}><Text style={[styles.danger, {color: theme.danger}]}>Reset all local data</Text></Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{expanded: showDisclosure}}
+          onPress={() => setShowDisclosure(value => !value)}
+          style={styles.disclosureHeader}>
+          <View>
+            <Text style={[styles.rowTitle, {color: theme.text}]}>Accessibility disclosure</Text>
+            <Text style={[styles.rowBody, {color: theme.textMuted}]}>Review exactly what FocusGuard can access</Text>
+          </View>
+          <Text style={[styles.disclosureChevron, {color: theme.textSubtle}]}>{showDisclosure ? '⌃' : '⌄'}</Text>
+        </Pressable>
+        {showDisclosure ? (
+          <View style={[styles.disclosureBody, {backgroundColor: theme.surfaceMuted}]}>
+            <Text style={[styles.disclosureText, {color: theme.textMuted}]}>
+              FocusGuard reads only package names from window-change events to compare them with your local block list. It does not inspect screen content, type, tap, collect, sell, share, or transmit data. All records remain in the app’s private local database.
+            </Text>
+          </View>
+        ) : null}
+        <View style={[styles.divider, {backgroundColor: theme.border}]} />
+        <Pressable
+          accessibilityRole="button"
+          onPress={confirmReset}
+          disabled={busy}
+          style={[styles.resetRow, {backgroundColor: theme.dangerSoft}]}>
+          <View>
+            <Text style={[styles.resetTitle, {color: theme.danger}]}>Reset local data</Text>
+            <Text style={[styles.resetBody, {color: theme.textMuted}]}>Selections, sessions, and statistics</Text>
+          </View>
+          <Text style={[styles.resetChevron, {color: theme.danger}]}>›</Text>
+        </Pressable>
       </Card>
 
-      <Text style={[styles.version, {color: theme.textMuted}]}>FocusGuard 1.0 · Offline Android MVP</Text>
+      <View style={styles.footer}>
+        <BrandMark theme={theme} size={38} />
+        <Text style={[styles.footerTitle, {color: theme.text}]}>FocusGuard</Text>
+        <Text style={[styles.version, {color: theme.textSubtle}]}>Version 1.0 · Android · Offline</Text>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {padding: 22, paddingBottom: 36},
-  title: {fontSize: 32, fontWeight: '800', letterSpacing: -0.8, marginBottom: 25},
-  section: {fontSize: 18, fontWeight: '700', marginBottom: 10, marginTop: 6},
-  card: {marginBottom: 24},
-  row: {flexDirection: 'row', alignItems: 'center'},
-  dot: {width: 10, height: 10, borderRadius: 5, marginRight: 12},
-  rowCopy: {flex: 1},
-  rowTitle: {fontSize: 15, fontWeight: '700'},
-  rowBody: {fontSize: 12, lineHeight: 18, marginTop: 3},
-  buttonGap: {height: 17},
-  textButton: {textAlign: 'center', fontWeight: '700', paddingTop: 16},
-  themeCard: {paddingVertical: 5, marginBottom: 24},
-  themeOption: {height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
-  themeLabel: {fontSize: 15, fontWeight: '600'},
-  radio: {width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center'},
-  radioFill: {width: 10, height: 10, borderRadius: 5},
-  disclosure: {fontSize: 13, lineHeight: 20, marginTop: 14},
-  divider: {height: StyleSheet.hairlineWidth, marginVertical: 18},
-  danger: {fontSize: 15, fontWeight: '700'},
-  version: {fontSize: 12, textAlign: 'center', marginTop: 6},
+  content: {paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xxxl},
+  permissionCard: {marginBottom: spacing.xl},
+  permissionHeader: {flexDirection: 'row', alignItems: 'center'},
+  permissionIcon: {width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center'},
+  permissionRing: {width: 27, height: 27, borderRadius: 14, borderWidth: 2, alignItems: 'center', justifyContent: 'center'},
+  permissionDot: {width: 8, height: 8, borderRadius: 4},
+  permissionCopy: {flex: 1, marginHorizontal: spacing.sm},
+  permissionTitle: {fontSize: 14, fontWeight: '700', marginBottom: 3},
+  permissionBody: {fontSize: 11, lineHeight: 16},
+  divider: {height: 1, marginVertical: spacing.lg},
+  recheckButton: {alignSelf: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.md},
+  recheckText: {fontSize: 12, fontWeight: '700'},
+  appearanceCard: {marginBottom: spacing.xl},
+  controlLabel: {fontSize: 14, fontWeight: '700'},
+  controlHint: {fontSize: 12, marginTop: 3, marginBottom: spacing.md},
+  segmented: {height: 60, borderRadius: radii.md, flexDirection: 'row', padding: 5},
+  segment: {flex: 1, borderRadius: 12, borderWidth: 1, borderColor: 'transparent', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6},
+  segmentGlyph: {fontSize: 13, fontWeight: '800'},
+  segmentLabel: {fontSize: 12, fontWeight: '600'},
+  segmentLabelActive: {fontWeight: '800'},
+  privacyCard: {marginBottom: spacing.xl},
+  offlineRow: {flexDirection: 'row', alignItems: 'center'},
+  offlineIcon: {width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
+  offlineGlyph: {fontSize: 17, fontWeight: '900'},
+  offlineCopy: {flex: 1, marginLeft: spacing.sm},
+  rowTitle: {fontSize: 14, fontWeight: '700'},
+  rowBody: {fontSize: 11, lineHeight: 16, marginTop: 3},
+  disclosureHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+  disclosureChevron: {fontSize: 20, fontWeight: '700'},
+  disclosureBody: {borderRadius: radii.md, padding: spacing.md, marginTop: spacing.md},
+  disclosureText: {fontSize: 12, lineHeight: 19},
+  resetRow: {minHeight: 64, borderRadius: radii.md, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
+  resetTitle: {fontSize: 14, fontWeight: '700'},
+  resetBody: {fontSize: 10.5, marginTop: 3},
+  resetChevron: {fontSize: 27, fontWeight: '300'},
+  footer: {alignItems: 'center', paddingTop: spacing.md, paddingBottom: spacing.lg},
+  footerTitle: {fontSize: 14, fontWeight: '800', marginTop: spacing.sm},
+  version: {fontSize: 10.5, marginTop: 3},
 });

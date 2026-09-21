@@ -73,3 +73,7 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Design tooling installed per-machine (npx impeccable install)
+.claude/skills/
+.claude/agents/

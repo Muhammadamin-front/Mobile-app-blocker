@@ -90,21 +90,26 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun startBlockingSession(input: ReadableMap, promise: Promise) = background(promise) {
-    check(isAccessibilityServiceEnabled()) {
-      "Enable the FocusGuard accessibility service before starting a session."
-    }
+  fun startBlockingSession(input: ReadableMap, promise: Promise) {
+    // Bridge values are only readable while this call is on the stack, so the
+    // request is copied here and the database work happens on the executor.
     val id = input.requireString("id")
     val startTimestamp = input.requireLong("startTimestamp")
     val endTimestamp = input.requireLong("endTimestamp")
-    val excluded = criticalPackages()
-    val apps = input.getArray("blockedApps")?.toStoredApps().orEmpty()
-      .filterNot { it.packageName in excluded }
-      .filter { isLaunchable(it.packageName) }
-    database.setSelectedApps(apps)
-    val session = database.startSession(id, startTimestamp, endTimestamp, apps)
-    FocusAccessibilityService.invalidateCache()
-    session.toWritableMap()
+    val requested = input.getArray("blockedApps")?.toStoredApps().orEmpty()
+    background(promise) {
+      check(isAccessibilityServiceEnabled()) {
+        "Enable the FocusGuard accessibility service before starting a session."
+      }
+      val excluded = criticalPackages()
+      val apps = requested
+        .filterNot { it.packageName in excluded }
+        .filter { isLaunchable(it.packageName) }
+      database.setSelectedApps(apps)
+      val session = database.startSession(id, startTimestamp, endTimestamp, apps)
+      FocusAccessibilityService.invalidateCache()
+      session.toWritableMap()
+    }
   }
 
   @ReactMethod
@@ -157,25 +162,37 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
 
   /** Icons are fetched on demand instead of being persisted, so they stay out of the database. */
   @ReactMethod
-  fun getAppIcons(packages: ReadableArray, promise: Promise) = background(promise) {
-    val packageManager = context.packageManager
-    Arguments.createMap().apply {
+  fun getAppIcons(packages: ReadableArray, promise: Promise) {
+    val names = buildList {
       for (index in 0 until packages.size()) {
-        val packageName = packages.getString(index) ?: continue
-        val drawable = try {
-          packageManager.getApplicationIcon(packageName)
-        } catch (_: Exception) {
-          null
-        } ?: continue
-        drawableToBase64(drawable)?.let { putString(packageName, it) }
+        packages.getString(index)?.takeIf { it.isNotBlank() }?.let(::add)
+      }
+    }
+    background(promise) {
+      val packageManager = context.packageManager
+      Arguments.createMap().apply {
+        names.forEach { packageName ->
+          val drawable = try {
+            packageManager.getApplicationIcon(packageName)
+          } catch (_: Exception) {
+            null
+          }
+          if (drawable != null) {
+            drawableToBase64(drawable)?.let { putString(packageName, it) }
+          }
+        }
       }
     }
   }
 
   @ReactMethod
-  fun setSelectedApps(apps: ReadableArray, promise: Promise) = background(promise) {
-    database.setSelectedApps(apps.toStoredApps().filterNot { it.packageName in criticalPackages() })
-    null
+  fun setSelectedApps(apps: ReadableArray, promise: Promise) {
+    val requested = apps.toStoredApps()
+    background(promise) {
+      val excluded = criticalPackages()
+      database.setSelectedApps(requested.filterNot { it.packageName in excluded })
+      null
+    }
   }
 
   @ReactMethod
