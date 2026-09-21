@@ -154,7 +154,9 @@ it as an optional, local-only statistics feature.
 - Database synchronization rejects simultaneous active/scheduled sessions, protecting against repeated Start taps.
 - Enforcement does not use the JavaScript timer.
 - On the same boot, `SystemClock.elapsedRealtime()` controls start and expiry, resisting timezone and ordinary wall-clock changes.
-- After reboot, persisted epoch timestamps are the fallback because elapsed realtime resets.
+- After reboot, persisted epoch timestamps are the fallback because elapsed realtime resets, so time spent powered off is deducted from the session: rebooting cannot pause or extend a session.
+- Enforcement resumes on its own after a reboot. Android re-binds an enabled accessibility service without the app being opened, and delivers the current window's state to it on connect, so an app already in the foreground is caught immediately rather than on the next switch.
+- There is a window between boot and that re-bind during which nothing is enforced; it belongs to Android's scheduling and an app cannot bind its own accessibility service. Measured on a cold emulator boot, the service was bound 17 seconds before the keyguard could be dismissed, so the phone was not usable before enforcement was live. Confirm the ordering on real hardware.
 - The service normalizes expiry on every relevant foreground event; the UI and boot/time receiver also normalize persisted state.
 - Missing/corrupt selected-app JSON falls back to an empty list. An uninstalled blocked app remains harmless in history and no longer emits events.
 - Revoking Accessibility access is always respected. The UI verifies actual enabled-service state whenever it returns to the foreground, and re-checks it on a timer while a session is running so a session can never be presented as enforced when it is not.
@@ -220,7 +222,7 @@ Run on at least one AOSP/Pixel device and representative Samsung/Xiaomi devices 
 - [ ] Force-stop FocusGuard from App info; confirm Android disables the accessibility service, that blocking stops, and that FocusGuard reports the lost permission instead of claiming the session is still enforced.
 - [ ] Reopen FocusGuard and verify the active session and countdown restore.
 - [ ] Change timezone and wall clock during a session; verify same-boot expiry follows elapsed time.
-- [ ] Reboot during a session; verify the session restores and expires using persisted epoch time.
+- [ ] Reboot during a session; verify the session restores, that a blocked app still opens into the block screen without reopening FocusGuard, that the timer notification comes back, and that the time spent rebooting was deducted from the session.
 - [ ] Let the session expire while outside FocusGuard; verify the formerly blocked app opens.
 - [ ] Revoke Accessibility during a session; verify Android accepts the revocation and FocusGuard reports it disabled on return.
 - [ ] Uninstall a blocked app; verify FocusGuard remains stable and history is readable.
