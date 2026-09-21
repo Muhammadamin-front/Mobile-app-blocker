@@ -1,235 +1,301 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   AccessibilityInfo,
   Animated,
-  BackHandler,
   Easing,
-  Pressable,
+  StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
 
-import {pickQuote} from '../../domain/quotes';
-import {radii, spacing, Theme} from '../../theme/theme';
-import {BrandMark} from '../components';
+// The intro is paced by the data it is covering, not by a fixed wait. It stays long
+// enough not to flash, leaves the moment the app is ready, and gives up if readiness
+// never arrives so a stalled load cannot strand the user here.
+const MINIMUM_VISIBLE_MILLIS = 900;
+const MAXIMUM_VISIBLE_MILLIS = 6000;
+const EXIT_MILLIS = 320;
+const INTRO_YELLOW = '#F8BA00';
 
-const HOLD_MILLIS = 2400;
-const ENTER_MILLIS = 720;
+type IntroScreenProps = {
+  ready: boolean;
+  onDone(): void;
+};
 
 /**
- * The first frame of a cold start. It covers the initial database read rather
- * than adding waiting time, and any tap or a Back press moves on immediately.
+ * A full-bleed startup scene that also masks the initial native data read.
+ * It remains visible until both the authored intro and app initialization finish.
  */
-export function IntroScreen({theme, onDone}: {theme: Theme; onDone(): void}) {
-  const quote = useMemo(() => pickQuote(), []);
-  const enter = useRef(new Animated.Value(0)).current;
-  const settled = useRef(false);
-  const [done, setDone] = useState(false);
+export function IntroScreen({ready, onDone}: IntroScreenProps) {
+  const entrance = useRef(new Animated.Value(0)).current;
+  const drift = useRef(new Animated.Value(0)).current;
+  const exit = useRef(new Animated.Value(1)).current;
+  const dots = useRef([
+    new Animated.Value(0.32),
+    new Animated.Value(0.32),
+    new Animated.Value(0.32),
+  ]).current;
+  const finished = useRef(false);
+  const [minimumElapsed, setMinimumElapsed] = useState(false);
+  const [waitedLongEnough, setWaitedLongEnough] = useState(false);
 
-  const finish = useCallback(() => {
-    if (settled.current) {
-      return;
-    }
-    settled.current = true;
-    setDone(true);
-    onDone();
-  }, [onDone]);
+  useEffect(() => {
+    const floor = setTimeout(() => setMinimumElapsed(true), MINIMUM_VISIBLE_MILLIS);
+    const ceiling = setTimeout(() => setWaitedLongEnough(true), MAXIMUM_VISIBLE_MILLIS);
+    return () => {
+      clearTimeout(floor);
+      clearTimeout(ceiling);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    let animation: Animated.CompositeAnimation | undefined;
+    const animations: Animated.CompositeAnimation[] = [];
 
-    // One authored settle. With Remove animations on, the screen simply is.
     AccessibilityInfo.isReduceMotionEnabled()
       .catch(() => false)
-      .then(reduced => {
+      .then(reducedMotion => {
         if (cancelled) {
           return;
         }
-        if (reduced) {
-          enter.setValue(1);
+
+        if (reducedMotion) {
+          entrance.setValue(1);
+          dots.forEach(dot => dot.setValue(0.78));
           return;
         }
-        animation = Animated.timing(enter, {
+
+        const enterAnimation = Animated.timing(entrance, {
           toValue: 1,
-          duration: ENTER_MILLIS,
-          easing: Easing.out(Easing.exp),
+          duration: 700,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         });
-        animation.start();
+        const driftAnimation = Animated.loop(
+          Animated.sequence([
+            Animated.timing(drift, {
+              toValue: 1,
+              duration: 3200,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+            Animated.timing(drift, {
+              toValue: 0,
+              duration: 3200,
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+          ]),
+        );
+        const dotAnimation = Animated.loop(
+          Animated.stagger(
+            150,
+            dots.map(dot =>
+              Animated.sequence([
+                Animated.timing(dot, {
+                  toValue: 1,
+                  duration: 230,
+                  easing: Easing.out(Easing.quad),
+                  useNativeDriver: true,
+                }),
+                Animated.timing(dot, {
+                  toValue: 0.32,
+                  duration: 300,
+                  easing: Easing.in(Easing.quad),
+                  useNativeDriver: true,
+                }),
+              ]),
+            ),
+          ),
+        );
+
+        animations.push(enterAnimation, driftAnimation, dotAnimation);
+        enterAnimation.start();
+        driftAnimation.start();
+        dotAnimation.start();
       });
 
-    const timer = setTimeout(finish, HOLD_MILLIS);
     return () => {
       cancelled = true;
-      animation?.stop();
-      clearTimeout(timer);
+      animations.forEach(animation => animation.stop());
     };
-  }, [enter, finish]);
+  }, [dots, drift, entrance]);
+
+  const finish = useCallback(() => {
+    if (finished.current) {
+      return;
+    }
+    finished.current = true;
+    Animated.timing(exit, {
+      toValue: 0,
+      duration: EXIT_MILLIS,
+      easing: Easing.inOut(Easing.quad),
+      useNativeDriver: true,
+    }).start(({finished: animationFinished}) => {
+      if (animationFinished) {
+        onDone();
+      }
+    });
+  }, [exit, onDone]);
 
   useEffect(() => {
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+    if (minimumElapsed && (ready || waitedLongEnough)) {
       finish();
-      return true;
-    });
-    return () => subscription.remove();
-  }, [finish]);
-
-  const stage = (from: number, to: number, distance: number) => ({
-    opacity: enter.interpolate({
-      inputRange: [from, to],
-      outputRange: [0, 1],
-      extrapolate: 'clamp',
-    }),
-    transform: [
-      {
-        translateY: enter.interpolate({
-          inputRange: [from, to],
-          outputRange: [distance, 0],
-          extrapolate: 'clamp',
-        }),
-      },
-    ],
-  });
-
-  if (done) {
-    return null;
-  }
+    }
+  }, [finish, minimumElapsed, ready, waitedLongEnough]);
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Continue to FocusGuard"
-      onPress={finish}
-      style={styles.pressable}>
-      <View style={[styles.root, {backgroundColor: theme.background}]}>
-        <View
-          pointerEvents="none"
-          style={[styles.ambientGlow, {backgroundColor: theme.backgroundAccent}]}
-        />
-        <SafeAreaView style={styles.safe}>
-          <View style={styles.center}>
-            <Animated.View style={stage(0, 0.55, 22)}>
-              <View style={[styles.halo, {backgroundColor: theme.primarySoft}]}>
-                <BrandMark theme={theme} size={72} />
-              </View>
-            </Animated.View>
+    <Animated.View style={[styles.root, {opacity: exit}]}>
+      <StatusBar animated barStyle="dark-content" />
+      <Animated.Image
+        accessibilityIgnoresInvertColors
+        resizeMode="cover"
+        source={require('../../assets/cat-intro.jpg')}
+        style={[
+          styles.image,
+          {
+            opacity: entrance,
+            transform: [
+              {
+                scale: drift.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1.02, 1.075],
+                }),
+              },
+              {
+                translateX: drift.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-2, 3],
+                }),
+              },
+              {
+                translateY: drift.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [5, -7],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
 
-            <Animated.View style={[styles.copy, stage(0.2, 0.8, 16)]}>
-              <Text style={[styles.welcome, {color: theme.textMuted}]}>
-                Welcome to{' '}
-                <Text style={[styles.brand, {color: theme.text}]}>FocusGuard</Text>
-              </Text>
+      <View pointerEvents="none" style={styles.topTint} />
+
+      <Animated.View
+        accessible
+        accessibilityLabel="FocusGuard is loading"
+        accessibilityLiveRegion="polite"
+        style={[
+          styles.loading,
+          {
+            opacity: entrance,
+            transform: [
+              {
+                translateY: entrance.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [14, 0],
+                }),
+              },
+            ],
+          },
+        ]}>
+        <Text style={styles.brand}>FOCUSGUARD</Text>
+        <View style={styles.loadingRow}>
+          <Text style={styles.loadingText}>Loading</Text>
+          <View accessibilityElementsHidden style={styles.dots}>
+            {dots.map((dot, index) => (
               <Animated.View
+                key={index}
                 style={[
-                  styles.rule,
-                  {backgroundColor: theme.primary},
+                  styles.dot,
                   {
+                    opacity: dot,
                     transform: [
                       {
-                        scaleX: enter.interpolate({
-                          inputRange: [0.55, 1],
-                          outputRange: [0, 1],
-                          extrapolate: 'clamp',
+                        translateY: dot.interpolate({
+                          inputRange: [0.32, 1],
+                          outputRange: [0, -6],
+                        }),
+                      },
+                      {
+                        scale: dot.interpolate({
+                          inputRange: [0.32, 1],
+                          outputRange: [0.82, 1],
                         }),
                       },
                     ],
                   },
                 ]}
               />
-            </Animated.View>
-
-            <Animated.View
-              style={[
-                styles.quoteCard,
-                {
-                  backgroundColor: theme.surface,
-                  borderColor: theme.border,
-                  shadowColor: theme.shadow,
-                },
-                stage(0.45, 1, 18),
-              ]}>
-              <Text style={[styles.quoteText, {color: theme.text}]}>
-                “{quote.text}”
-              </Text>
-              <Text style={[styles.quoteAuthor, {color: theme.textMuted}]}>
-                — {quote.author}
-              </Text>
-            </Animated.View>
+            ))}
           </View>
-
-          <Animated.Text
-            style={[
-              styles.hint,
-              {color: theme.textMuted},
-              {
-                opacity: enter.interpolate({
-                  inputRange: [0.7, 1],
-                  outputRange: [0, 1],
-                  extrapolate: 'clamp',
-                }),
-              },
-            ]}>
-            Tap to continue
-          </Animated.Text>
-        </SafeAreaView>
-      </View>
-    </Pressable>
+        </View>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  pressable: {flex: 1},
-  root: {flex: 1},
-  safe: {flex: 1},
-  ambientGlow: {
-    position: 'absolute',
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    top: -150,
-    right: -120,
-    opacity: 0.55,
-  },
-  center: {
+  root: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    gap: spacing.xxl,
+    backgroundColor: INTRO_YELLOW,
+    overflow: 'hidden',
   },
-  halo: {
-    width: 116,
-    height: 116,
-    borderRadius: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  copy: {alignItems: 'center'},
-  welcome: {fontSize: 27, fontWeight: '500', letterSpacing: -0.5, textAlign: 'center'},
-  brand: {fontSize: 27, fontWeight: '800', letterSpacing: -0.8},
-  rule: {width: 52, height: 3, borderRadius: 2, marginTop: spacing.lg},
-  quoteCard: {
+  image: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     width: '100%',
-    maxWidth: 420,
-    borderWidth: 1,
-    borderRadius: radii.xl,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-    elevation: 5,
-    shadowOffset: {width: 0, height: 9},
-    shadowOpacity: 0.11,
-    shadowRadius: 18,
+    height: '100%',
   },
-  quoteText: {fontSize: 16, lineHeight: 25, fontWeight: '600'},
-  quoteAuthor: {fontSize: 13, fontWeight: '600', marginTop: spacing.sm},
-  hint: {
-    textAlign: 'center',
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1.1,
-    paddingBottom: spacing.xl,
+  topTint: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: '54%',
+    left: 0,
+    backgroundColor: '#F9BE0014',
+  },
+  loading: {
+    position: 'absolute',
+    top: '15%',
+    left: 24,
+    right: 24,
+    alignItems: 'center',
+  },
+  brand: {
+    color: '#17130A',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 3.2,
+    marginBottom: 11,
+    opacity: 0.62,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  loadingText: {
+    color: '#100D07',
+    fontSize: 31,
+    lineHeight: 38,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+  },
+  dots: {
+    height: 24,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 5,
+    marginLeft: 8,
+    paddingBottom: 7,
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#100D07',
   },
 });

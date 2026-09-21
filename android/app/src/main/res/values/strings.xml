@@ -17,4 +17,6 @@
     <string name="notification_blocked_apps">%1$d app blocked</string>
     <string name="notification_blocked_apps_plural">%1$d apps blocked</string>
     <string name="notification_starts_soon">Starting soon</string>
+    <string name="block_quote">“%1$s”</string>
+    <string name="block_quote_author">— %1$s</string>
 </resources>

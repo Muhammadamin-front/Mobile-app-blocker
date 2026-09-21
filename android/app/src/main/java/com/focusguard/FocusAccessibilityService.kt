@@ -86,6 +86,8 @@ class FocusAccessibilityService : AccessibilityService() {
       putExtra(BlockActivity.EXTRA_PACKAGE_NAME, blockedApp.packageName)
       putExtra(BlockActivity.EXTRA_APP_NAME, blockedApp.appName)
       putExtra(BlockActivity.EXTRA_REMAINING_MILLIS, remainingMillis)
+      // Seeded by the session so the quote holds still for as long as it is running.
+      putExtra(BlockActivity.EXTRA_QUOTE_SEED, session?.id?.hashCode() ?: 0)
       flags = Intent.FLAG_ACTIVITY_NEW_TASK or
         Intent.FLAG_ACTIVITY_CLEAR_TOP or
         Intent.FLAG_ACTIVITY_SINGLE_TOP or

@@ -37,6 +37,10 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
         pointerEvents="none"
         style={[styles.ambientGlow, {backgroundColor: theme.backgroundAccent}]}
       />
+      <View
+        pointerEvents="none"
+        style={[styles.yellowGlow, {backgroundColor: theme.primary}]}
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}>
@@ -75,7 +79,7 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
 
         <View style={styles.stepRow}>
           <View style={[styles.stepNumber, {backgroundColor: theme.primary}]}>
-            <Text style={styles.stepNumberText}>1</Text>
+            <Text style={[styles.stepNumberText, {color: theme.inverseText}]}>1</Text>
           </View>
           <View>
             <Text style={[styles.stepTitle, {color: theme.text}]}>Enable focused protection</Text>
@@ -122,7 +126,7 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
               styles.checkbox,
               checkboxColors,
             ]}>
-            {accepted ? <Text style={styles.check}>✓</Text> : null}
+            {accepted ? <Text style={[styles.check, {color: theme.inverseText}]}>✓</Text> : null}
           </View>
           <Text style={[styles.consentText, {color: theme.text}]}>
             I understand and consent to this limited Accessibility use.
@@ -163,7 +167,8 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
 
 const styles = StyleSheet.create({
   safe: {flex: 1},
-  ambientGlow: {position: 'absolute', width: 340, height: 340, borderRadius: 170, top: -210, right: -150, opacity: 0.6},
+  ambientGlow: {position: 'absolute', width: 430, height: 430, borderRadius: 215, top: -250, left: -210, opacity: 0.72},
+  yellowGlow: {position: 'absolute', width: 190, height: 190, borderRadius: 95, top: -110, right: -90, opacity: 0.16},
   content: {paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.xxxl},
   brandRow: {flexDirection: 'row', alignItems: 'center'},
   brandName: {fontSize: 16, fontWeight: '800', letterSpacing: -0.3, flex: 1, marginLeft: spacing.sm},
@@ -183,7 +188,7 @@ const styles = StyleSheet.create({
   trustBody: {fontSize: 9.5, lineHeight: 14},
   stepRow: {flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md},
   stepNumber: {width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm},
-  stepNumberText: {color: '#FFFFFF', fontSize: 13, fontWeight: '800'},
+  stepNumberText: {fontSize: 13, fontWeight: '800'},
   stepTitle: {fontSize: 15, fontWeight: '700'},
   stepSubtitle: {fontSize: 11, marginTop: 2},
   disclosureCard: {marginBottom: spacing.md},
@@ -200,7 +205,7 @@ const styles = StyleSheet.create({
   privacyText: {flex: 1, fontSize: 11.5, lineHeight: 18},
   consentRow: {minHeight: 72, borderRadius: radii.lg, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: spacing.md, marginBottom: spacing.md},
   checkbox: {width: 26, height: 26, borderRadius: 9, borderWidth: 1.8, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm},
-  check: {color: '#FFFFFF', fontWeight: '900'},
+  check: {fontWeight: '900'},
   consentText: {flex: 1, fontSize: 13, lineHeight: 19, fontWeight: '600'},
   enabledBadge: {minHeight: 54, borderRadius: radii.md, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center'},
   enabledDot: {width: 8, height: 8, borderRadius: 4, marginRight: spacing.xs},

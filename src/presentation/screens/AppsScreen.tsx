@@ -86,7 +86,7 @@ export function AppsScreen({theme}: {theme: Theme}) {
         <View style={[styles.selectionBar, {backgroundColor: theme.primarySoft}]}>
           <View style={styles.selectionCountRow}>
             <View style={[styles.selectionCount, {backgroundColor: theme.primary}]}>
-              <Text style={styles.selectionCountText}>{selectedApps.length}</Text>
+              <Text style={[styles.selectionCountText, {color: theme.inverseText}]}>{selectedApps.length}</Text>
             </View>
             <View>
               <Text style={[styles.selectionTitle, {color: theme.text}]}>Apps selected</Text>
@@ -151,7 +151,7 @@ export function AppsScreen({theme}: {theme: Theme}) {
                     styles.checkbox,
                     checkboxColors,
                   ]}>
-                  {checked ? <Text style={styles.check}>✓</Text> : null}
+              {checked ? <Text style={[styles.check, {color: theme.inverseText}]}>✓</Text> : null}
                 </View>
               </Pressable>
             );
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   selectionBar: {minHeight: 66, borderRadius: radii.lg, paddingHorizontal: spacing.md, marginTop: spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
   selectionCountRow: {flexDirection: 'row', alignItems: 'center'},
   selectionCount: {width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm},
-  selectionCountText: {color: '#FFFFFF', fontSize: 13, fontWeight: '800'},
+  selectionCountText: {fontSize: 13, fontWeight: '800'},
   selectionTitle: {fontSize: 13, fontWeight: '700'},
   selectionSubtitle: {fontSize: 10, marginTop: 2},
   selectionActions: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   appName: {fontSize: 15, fontWeight: '700', marginBottom: 4},
   packageName: {fontSize: 10.5},
   checkbox: {width: 25, height: 25, borderRadius: 9, borderWidth: 1.8, alignItems: 'center', justifyContent: 'center'},
-  check: {color: '#FFFFFF', fontSize: 13, fontWeight: '900'},
+  check: {fontSize: 13, fontWeight: '900'},
   loading: {flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl},
   loadingIcon: {width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md},
   loadingTitle: {fontSize: 17, fontWeight: '700', marginBottom: 5},

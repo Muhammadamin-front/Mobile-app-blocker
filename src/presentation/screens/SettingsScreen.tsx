@@ -8,8 +8,8 @@ import {BrandMark, Card, PrimaryButton, ScreenHeader, SectionTitle, StatusBadge}
 
 const themeOptions: Array<{value: ThemePreference; label: string; glyph: string}> = [
   {value: 'system', label: 'Auto', glyph: 'A'},
-  {value: 'light', label: 'Light', glyph: '☀'},
-  {value: 'dark', label: 'Dark', glyph: '◐'},
+  {value: 'light', label: 'Navy', glyph: '◆'},
+  {value: 'dark', label: 'Black', glyph: '●'},
 ];
 
 export function SettingsScreen({theme}: {theme: Theme}) {
@@ -116,7 +116,7 @@ export function SettingsScreen({theme}: {theme: Theme}) {
       <SectionTitle theme={theme}>Appearance</SectionTitle>
       <Card theme={theme} style={styles.appearanceCard}>
         <Text style={[styles.controlLabel, {color: theme.text}]}>Color mode</Text>
-        <Text style={[styles.controlHint, {color: theme.textMuted}]}>Follow your phone or choose a fixed look.</Text>
+        <Text style={[styles.controlHint, {color: theme.textMuted}]}>Follow your phone or choose navy or black glass.</Text>
         <View style={[styles.segmented, {backgroundColor: theme.surfaceMuted}]}>
           {themeOptions.map(option => {
             const active = themePreference === option.value;

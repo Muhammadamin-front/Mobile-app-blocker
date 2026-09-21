@@ -15,7 +15,7 @@ function ThemedApp() {
   return (
     <>
       <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
+        barStyle="light-content"
       />
       <AppShell isDark={isDark} />
     </>

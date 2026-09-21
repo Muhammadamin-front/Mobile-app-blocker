@@ -33,9 +33,9 @@ export function PrimaryButton({
   trailing?: string;
 }) {
   const colors = {
-    primary: {background: theme.primaryStrong, foreground: '#FFFFFF', border: theme.primaryStrong},
-    secondary: {background: theme.primarySoft, foreground: theme.primary, border: theme.primarySoft},
-    danger: {background: theme.dangerSoft, foreground: theme.danger, border: theme.dangerSoft},
+    primary: {background: theme.primaryStrong, foreground: theme.inverseText, border: theme.primary},
+    secondary: {background: theme.primarySoft, foreground: theme.primary, border: theme.borderStrong},
+    danger: {background: theme.dangerSoft, foreground: theme.danger, border: `${theme.danger}45`},
     ghost: {background: 'transparent', foreground: theme.textMuted, border: theme.border},
   }[variant];
 
@@ -48,7 +48,12 @@ export function PrimaryButton({
       disabled={disabled || loading}
       style={({pressed}) => [
         styles.primaryButton,
-        {backgroundColor: colors.background, borderColor: colors.border},
+        {
+          backgroundColor: colors.background,
+          borderColor: colors.border,
+          shadowColor: variant === 'primary' ? theme.primary : theme.glassShadow,
+        },
+        variant === 'primary' && styles.primaryButtonEmphasis,
         (disabled || loading) && styles.disabled,
         pressed && !disabled && styles.pressed,
       ]}>
@@ -93,6 +98,10 @@ export function Card({
         elevated && styles.cardElevated,
         style,
       ]}>
+      <View
+        pointerEvents="none"
+        style={[styles.cardSheen, {backgroundColor: theme.glassHighlight}]}
+      />
       {children}
     </View>
   );
@@ -104,7 +113,13 @@ export function BrandMark({theme, size = 54}: {theme: Theme; size?: number}) {
       accessibilityLabel="FocusGuard"
       style={[
         styles.brandMark,
-        {width: size, height: size, borderRadius: size * 0.31, backgroundColor: theme.primaryStrong},
+        {
+          width: size,
+          height: size,
+          borderRadius: size * 0.31,
+          backgroundColor: theme.primaryStrong,
+          borderColor: theme.primary,
+        },
       ]}>
       <View
         style={[
@@ -114,12 +129,18 @@ export function BrandMark({theme, size = 54}: {theme: Theme; size?: number}) {
             height: size * 0.56,
             borderRadius: size,
             borderWidth: Math.max(2, size * 0.065),
+            borderColor: theme.inverseText,
           },
         ]}>
         <View
           style={[
             styles.brandCore,
-            {width: size * 0.16, height: size * 0.16, borderRadius: size},
+            {
+              width: size * 0.16,
+              height: size * 0.16,
+              borderRadius: size,
+              backgroundColor: theme.inverseText,
+            },
           ]}
         />
       </View>
@@ -278,23 +299,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     overflow: 'hidden',
   },
+  primaryButtonEmphasis: {
+    elevation: 5,
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.22,
+    shadowRadius: 15,
+  },
   primaryLabel: {fontSize: 16, fontWeight: '700', letterSpacing: 0.1},
   buttonContent: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
   buttonTrailing: {fontSize: 20, fontWeight: '400', marginTop: -2},
   disabled: {opacity: 0.42},
   pressed: {transform: [{scale: 0.985}], opacity: 0.92},
-  card: {borderRadius: radii.lg, borderWidth: 1, padding: spacing.lg},
-  cardElevated: {
-    elevation: 3,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
+  card: {borderRadius: radii.lg, borderWidth: 1, padding: spacing.lg, overflow: 'hidden'},
+  cardSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 22,
+    right: 22,
+    height: 1,
+    borderRadius: 1,
   },
-  brandMark: {alignItems: 'center', justifyContent: 'center'},
-  brandOrbit: {borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center'},
-  brandCore: {backgroundColor: '#FFFFFF'},
-  fallbackIcon: {backgroundColor: '#6758E7', alignItems: 'center', justifyContent: 'center'},
-  fallbackIconText: {color: '#FFFFFF', fontWeight: '800'},
+  cardElevated: {
+    elevation: 7,
+    shadowOffset: {width: 0, height: 12},
+    shadowOpacity: 0.25,
+    shadowRadius: 22,
+  },
+  brandMark: {alignItems: 'center', justifyContent: 'center', borderWidth: 1},
+  brandOrbit: {alignItems: 'center', justifyContent: 'center'},
+  brandCore: {},
+  fallbackIcon: {backgroundColor: '#FFC400', alignItems: 'center', justifyContent: 'center'},
+  fallbackIconText: {color: '#10100B', fontWeight: '800'},
   screenHeader: {marginBottom: spacing.xl},
   eyebrow: {fontSize: 11, fontWeight: '800', letterSpacing: 2.1, marginBottom: spacing.xs},
   screenTitle: {fontSize: 34, lineHeight: 40, fontWeight: '800', letterSpacing: -1.1},
