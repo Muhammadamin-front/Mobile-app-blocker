@@ -128,6 +128,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
       database.setSelectedApps(apps)
       val session = database.startSession(id, startTimestamp, endTimestamp, apps)
       FocusAccessibilityService.invalidateCache()
+      FocusNotifier.sync(context)
       session.toWritableMap()
     }
   }
@@ -136,6 +137,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   fun stopBlockingSession(promise: Promise) = background(promise) {
     val stopped = database.stopSession()
     FocusAccessibilityService.invalidateCache()
+    FocusNotifier.sync(context)
     stopped?.toWritableMap()
   }
 
@@ -245,6 +247,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   fun resetAllData(promise: Promise) = background(promise) {
     database.resetAllData()
     FocusAccessibilityService.invalidateCache()
+    FocusNotifier.clear(context)
     null
   }
 

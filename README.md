@@ -107,6 +107,26 @@ recessive hairline grid, labels placed from a measured layout so a dense month
 never clips them, and a tap readout that supplements the axis rather than being
 the only way to read a value.
 
+## The session timer outside the app
+
+While a session runs, the remaining time sits in the status bar and on the lock
+screen so the user never has to reopen FocusGuard to check it.
+
+- The countdown is handed to the system as a chronometer, so it keeps ticking
+  with the process idle and costs nothing to redraw.
+- No foreground service is involved. The accessibility service already keeps the
+  process alive, and a timer does not justify holding a service the user cannot
+  dismiss.
+- The channel is silent by design but carries default importance, because
+  Android files low-importance notifications away from the lock screen, which is
+  exactly where this one is meant to be. Sound and vibration are removed instead.
+- It is posted when a session starts, retired when one ends, restored after a
+  reboot, and re-synced by the accessibility service and an inexact alarm, so it
+  can neither go missing nor linger at zero.
+- `POST_NOTIFICATIONS` is requested at the moment the session starts, where the
+  reason is on screen. Refusing it does not affect blocking; the session simply
+  runs without a visible timer.
+
 ## Screen time (optional)
 
 `PACKAGE_USAGE_STATS` is declared but never required. Blocking, sessions, history,
@@ -205,6 +225,9 @@ Run on at least one AOSP/Pixel device and representative Samsung/Xiaomi devices 
 - [ ] Revoke Accessibility during a session; verify Android accepts the revocation and FocusGuard reports it disabled on return.
 - [ ] Uninstall a blocked app; verify FocusGuard remains stable and history is readable.
 - [ ] Test light/dark/system themes and Reset local data.
+- [ ] Start a session, leave the app, and confirm the countdown is readable in the status bar, the shade, and the lock screen, and that it never makes a sound.
+- [ ] End the session and confirm the notification and its status bar icon both disappear.
+- [ ] Deny the notification permission and confirm the session still starts, blocks, and expires normally.
 - [ ] Open Progress and switch Week/Month/Year; confirm the axis labels are never clipped, tapping a bar names it, and the all-time total is consistent with the selected window.
 - [ ] Run a session across midnight and confirm it is split across both days.
 - [ ] Upgrade over an older install and confirm the `ended_at` migration keeps existing history readable.

@@ -10,4 +10,11 @@
     <string name="block_home_button">Back to Home</string>
     <string name="block_protection_note">FocusGuard is protecting this moment</string>
     <string name="block_native_status">Native protection is active</string>
+    <string name="notification_channel_name">Active focus session</string>
+    <string name="notification_channel_description">Shows the remaining time while a focus session is running.</string>
+    <string name="notification_title">Focus mode</string>
+    <string name="notification_scheduled_title">Focus scheduled</string>
+    <string name="notification_blocked_apps">%1$d app blocked</string>
+    <string name="notification_blocked_apps_plural">%1$d apps blocked</string>
+    <string name="notification_starts_soon">Starting soon</string>
 </resources>

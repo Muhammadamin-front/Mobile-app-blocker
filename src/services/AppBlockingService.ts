@@ -17,6 +17,11 @@ export interface AppBlockingService {
   getPermissionStatus(): Promise<PermissionStatus>;
   requestRequiredPermissions(): Promise<void>;
   requestUsageAccess(): Promise<void>;
+  /**
+   * Asks for permission to show the session timer. Denial is not fatal: the session
+   * runs either way, it simply has no notification.
+   */
+  ensureTimerNotificationPermission(): Promise<boolean>;
   getScreenTime(range: TrendRange): Promise<ScreenTimeReport>;
   startBlockingSession(input: StartSessionInput): Promise<FocusSession>;
   stopBlockingSession(): Promise<FocusSession | null>;

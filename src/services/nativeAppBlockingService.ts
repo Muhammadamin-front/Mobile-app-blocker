@@ -1,4 +1,4 @@
-import {NativeModules, Platform} from 'react-native';
+import {NativeModules, PermissionsAndroid, Platform} from 'react-native';
 
 import {IconMap, withoutIcons} from '../domain/icons';
 
@@ -49,12 +49,30 @@ function getNativeModule(): NativeFocusGuardModule {
   return module;
 }
 
+async function ensureTimerNotificationPermission(): Promise<boolean> {
+  // The permission only exists from Android 13; before that the timer just shows.
+  if (Platform.OS !== 'android' || Number(Platform.Version) < 33) {
+    return true;
+  }
+  try {
+    const permission = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS;
+    if (await PermissionsAndroid.check(permission)) {
+      return true;
+    }
+    const result = await PermissionsAndroid.request(permission);
+    return result === PermissionsAndroid.RESULTS.GRANTED;
+  } catch {
+    return false;
+  }
+}
+
 export const appBlockingService: AppBlockingService = {
   getInstalledApps: () => getNativeModule().getInstalledApps(),
   getPermissionStatus: () => getNativeModule().getPermissionStatus(),
   requestRequiredPermissions: () =>
     getNativeModule().openAccessibilitySettings(),
   requestUsageAccess: () => getNativeModule().openUsageAccessSettings(),
+  ensureTimerNotificationPermission,
   getScreenTime: range => getNativeModule().getScreenTime(range),
   startBlockingSession: input =>
     getNativeModule().startBlockingSession({

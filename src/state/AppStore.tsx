@@ -275,6 +275,9 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       }
       setBusy(true);
       await run(async () => {
+        // Asked for here rather than at onboarding, so the request arrives with the
+        // reason visible on screen. A refusal must not stop the session.
+        await appBlockingService.ensureTimerNotificationPermission().catch(() => false);
         const session = await appBlockingService.startBlockingSession(input);
         setActiveSession(session);
         await refresh();

@@ -40,7 +40,12 @@ class FocusAccessibilityService : AccessibilityService() {
     invalidateCache()
     val db = database
     if (db != null) {
-      writer.execute { runCatching { db.normalizeSessions() } }
+      writer.execute {
+        runCatching {
+          db.normalizeSessions()
+          FocusNotifier.sync(applicationContext)
+        }
+      }
     }
   }
 
@@ -128,6 +133,10 @@ class FocusAccessibilityService : AccessibilityService() {
   }
 
   private fun clearSnapshot(now: Long) {
+    // A session that just ended leaves its notification behind unless we retire it.
+    if (session != null) {
+      writer.execute { runCatching { FocusNotifier.sync(applicationContext) } }
+    }
     session = null
     blockedApps = emptyMap()
     sessionEndElapsed = 0L
