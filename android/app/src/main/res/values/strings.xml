@@ -19,4 +19,8 @@
     <string name="notification_starts_soon">Starting soon</string>
     <string name="block_quote" translatable="false">“%1$s”</string>
     <string name="block_quote_author" translatable="false">— %1$s</string>
+    <string name="tile_label" translatable="false">Qoriqchi</string>
+    <string name="tile_subtitle_on">Focus running</string>
+    <string name="tile_subtitle_off">Start focus</string>
+    <string name="tile_subtitle_unavailable">Pick apps first</string>
 </resources>

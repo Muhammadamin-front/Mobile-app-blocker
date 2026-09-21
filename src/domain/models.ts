@@ -16,6 +16,8 @@ export interface FocusSession {
   endTimestamp: number;
   blockedApps: InstalledApp[];
   status: SessionStatus;
+  /** A strict session refuses to be ended before it finishes. */
+  strict: boolean;
   completedReason?: string;
   blockedAttempts: number;
   /** Native monotonic snapshots used for clock-change-resistant UI countdowns. */
@@ -54,6 +56,7 @@ export interface StartSessionInput {
   startTimestamp: number;
   endTimestamp: number;
   blockedApps: InstalledApp[];
+  strict: boolean;
 }
 
 export type TrendRange = 'week' | 'month' | 'year';

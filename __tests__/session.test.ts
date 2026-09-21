@@ -11,6 +11,7 @@ const baseSession: FocusSession = {
   endTimestamp: 61_000,
   blockedApps: [{packageName: 'com.example.social', appName: 'Social'}],
   status: 'SCHEDULED',
+  strict: false,
   blockedAttempts: 0,
 };
 

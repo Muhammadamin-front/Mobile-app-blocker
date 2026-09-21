@@ -127,6 +127,28 @@ screen so the user never has to reopen Qoriqchi to check it.
   reason is on screen. Refusing it does not affect blocking; the session simply
   runs without a visible timer.
 
+## Strict sessions
+
+A session can be started strict, and then it cannot be ended early. The button is
+not disabled — it is not there, replaced by a card that says why.
+
+- The refusal lives in the database, not only in the UI: `stopSession` throws while
+  a strict session still has time left, so nothing that reaches the native layer can
+  end it either.
+- It is confirmed before it starts, because it is the one choice on that screen that
+  cannot be taken back.
+- It never obstructs Android itself. Disabling the accessibility service or
+  uninstalling the app still works, and the onboarding says so.
+
+## Quick Settings tile
+
+`FocusTileService` starts and stops a session from the notification shade, using the
+saved app list and a default duration, so the common case costs one tap.
+
+- With no apps chosen the tile reports itself unavailable rather than failing.
+- It will not end a strict session: committing to something you cannot undo should
+  take more than a shade tap.
+
 ## Two languages
 
 The app ships in English and Uzbek, and the choice is one setting rather than two
@@ -245,6 +267,8 @@ Run on at least one AOSP/Pixel device and representative Samsung/Xiaomi devices 
 - [ ] Revoke Accessibility during a session; verify Android accepts the revocation and Qoriqchi reports it disabled on return.
 - [ ] Uninstall a blocked app; verify Qoriqchi remains stable and history is readable.
 - [ ] Test light/dark/system themes and Reset local data.
+- [ ] Start a strict session and confirm there is no way to end it in the app, that the tile refuses too, and that Accessibility can still be disabled from Android settings.
+- [ ] Add the Quick Settings tile and confirm it starts, stops, and reports unavailable with no apps chosen.
 - [ ] Switch the language and confirm the tab bar, both confirmation dialogs, the block screen, and the timer notification all follow it — including after force-stopping and reopening.
 - [ ] Start a session, leave the app, and confirm the countdown is readable in the status bar, the shade, and the lock screen, and that it never makes a sound.
 - [ ] End the session and confirm the notification and its status bar icon both disappear.

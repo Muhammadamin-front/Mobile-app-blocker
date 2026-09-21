@@ -147,6 +147,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     val startTimestamp = input.requireLong("startTimestamp")
     val endTimestamp = input.requireLong("endTimestamp")
     val requested = input.getArray("blockedApps")?.toStoredApps().orEmpty()
+    val strict = input.hasKey("strict") && !input.isNull("strict") && input.getBoolean("strict")
     background(promise) {
       check(isAccessibilityServiceEnabled()) {
         "Enable the FocusGuard accessibility service before starting a session."
@@ -156,7 +157,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
         .filterNot { it.packageName in excluded }
         .filter { isLaunchable(it.packageName) }
       database.setSelectedApps(apps)
-      val session = database.startSession(id, startTimestamp, endTimestamp, apps)
+      val session = database.startSession(id, startTimestamp, endTimestamp, apps, strict)
       FocusAccessibilityService.invalidateCache()
       FocusNotifier.sync(context)
       session.toWritableMap()
@@ -423,6 +424,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     putString("status", status)
     completedReason?.let { putString("completedReason", it) }
     putInt("blockedAttempts", blockedAttempts)
+    putBoolean("strict", strict)
     putDouble("remainingMillis", database.remainingMillis(this@toWritableMap).toDouble())
     putDouble("startsInMillis", database.startsInMillis(this@toWritableMap).toDouble())
   }

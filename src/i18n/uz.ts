@@ -70,7 +70,7 @@ export const uz: Dictionary = {
   'DEEP FOCUS': 'CHUQUR FOKUS',
   'PROTECTED APPS': 'HIMOYADAGI ILOVALAR',
   ON: 'YOQILGAN',
-  OFF: 'O\u2019CHIQ',
+  OFF: 'O\u2019CHIRILGAN',
   'Native protection is on': 'Himoya yoqilgan',
   'Blocking has stopped': 'Bloklash to’xtadi',
   'Blocking continues even when Qoriqchi is closed.':
@@ -79,6 +79,17 @@ export const uz: Dictionary = {
     'Accessibility o’chirilgan, shuning uchun bloklangan ilovalar ochilaveradi. Sessiyani davom ettirish uchun qayta yoqing.',
   'Turn blocking back on': 'Bloklashni qayta yoqish',
   'End focus session': 'Sessiyani tugatish',
+  'Strict session': 'Qat\u2019iy sessiya',
+  'Start a strict session?': 'Qat\u2019iy sessiya boshlansinmi?',
+  'For the next {d} you will not be able to end it. Blocked apps stay blocked until the timer runs out.':
+    'Keyingi {d} davomida uni tugata olmaysiz. Bloklangan ilovalar taymer tugaguncha bloklangan qoladi.',
+  'Start strict': 'Qat\u2019iy boshlash',
+  'Make this session impossible to end early.':
+    'Bu sessiyani erta tugatib bo\u2019lmaydigan qiling.',
+  'You will not be able to end this session early.':
+    'Bu sessiyani erta tugata olmaysiz.',
+  'You chose not to be able to stop this one. It ends on its own when the timer runs out.':
+    'Siz uni to\u2019xtata olmaslikni tanladingiz. Taymer tugaganda o\u2019zi yakunlanadi.',
 
   // Ending a session
   'End focus session?': 'Sessiyani tugatasizmi?',

@@ -52,6 +52,7 @@ export function HomeScreen({
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [custom, setCustom] = useState('45');
   const [startDelayMinutes, setStartDelayMinutes] = useState(0);
+  const [strict, setStrict] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [monotonicNow, setMonotonicNow] = useState(monotonicTime());
   const [nativeTimerSnapshot, setNativeTimerSnapshot] = useState(() => ({
@@ -127,7 +128,7 @@ export function HomeScreen({
     );
   };
 
-  const start = () => {
+  const begin = () => {
     const startTimestamp = Date.now() + startDelayMinutes * 60_000;
     const safeMinutes = Math.min(1440, Math.max(1, durationMinutes));
     startSession({
@@ -135,7 +136,29 @@ export function HomeScreen({
       startTimestamp,
       endTimestamp: startTimestamp + safeMinutes * 60_000,
       blockedApps: selectedApps,
+      strict,
     });
+  };
+
+  // Strict is the one choice here that cannot be taken back, so it is confirmed
+  // before it starts rather than argued with afterwards.
+  const start = () => {
+    if (!strict) {
+      begin();
+      return;
+    }
+    Alert.alert(
+      t('Start a strict session?'),
+      t(
+        'For the next {d} you will not be able to end it. Blocked apps stay blocked until the timer runs out.',
+        {d: formatMinutes(durationMinutes, t)},
+      ),
+      [
+        {text: t('Cancel'), style: 'cancel'},
+        {text: t('Start strict'), style: 'destructive', onPress: begin},
+      ],
+      {cancelable: true},
+    );
   };
 
   if (activeSession) {
@@ -158,7 +181,7 @@ export function HomeScreen({
               onBright
             />
             <View style={styles.sessionMonogram}>
-              <View style={[styles.sessionMonogramLine, {backgroundColor: theme.primary}]} />
+              <View style={[styles.sessionMonogramLine, {backgroundColor: theme.background}]} />
               <Text style={[styles.sessionMonogramText, {color: `${theme.background}9E`}]}>QORIQCHI</Text>
             </View>
           </View>
@@ -272,14 +295,27 @@ export function HomeScreen({
           </View>
         )}
 
-        <PrimaryButton
-          label={t('End focus session')}
-          onPress={confirmEnd}
-          theme={theme}
-          loading={busy}
-          variant="danger"
-          leading={<View style={[styles.stopGlyph, {borderColor: theme.danger}]} />}
-        />
+        {activeSession.strict ? (
+          <Card theme={theme} tone="muted" style={styles.lockedCard}>
+            <Text style={[styles.lockedTitle, {color: theme.text}]}>
+              {t('Strict session')}
+            </Text>
+            <Text style={[styles.lockedBody, {color: theme.textMuted}]}>
+              {t(
+                'You chose not to be able to stop this one. It ends on its own when the timer runs out.',
+              )}
+            </Text>
+          </Card>
+        ) : (
+          <PrimaryButton
+            label={t('End focus session')}
+            onPress={confirmEnd}
+            theme={theme}
+            loading={busy}
+            variant="danger"
+            leading={<View style={[styles.stopGlyph, {borderColor: theme.danger}]} />}
+          />
+        )}
       </ScrollView>
     );
   }
@@ -447,6 +483,40 @@ export function HomeScreen({
         </View>
       </Card>
 
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{checked: strict}}
+        onPress={() => setStrict(value => !value)}
+        style={({pressed}) => [
+          styles.strictRow,
+          {
+            backgroundColor: strict ? theme.primarySoft : theme.surface,
+            borderColor: strict ? theme.primary : theme.border,
+          },
+          pressed && styles.strictPressed,
+        ]}>
+        <View
+          style={[
+            styles.strictBox,
+            {
+              borderColor: strict ? theme.primary : theme.borderStrong,
+              backgroundColor: strict ? theme.primary : 'transparent',
+            },
+          ]}>
+          {strict ? (
+            <Text style={[styles.strictTick, {color: theme.background}]}>✓</Text>
+          ) : null}
+        </View>
+        <View style={styles.strictCopy}>
+          <Text style={[styles.strictTitle, {color: theme.text}]}>{t('Strict session')}</Text>
+          <Text style={[styles.strictBody, {color: theme.textMuted}]}>
+            {strict
+              ? t('You will not be able to end this session early.')
+              : t('Make this session impossible to end early.')}
+          </Text>
+        </View>
+      </Pressable>
+
       <PrimaryButton
         label={t('Start {d} focus', {d: formatMinutes(durationMinutes, t)})}
         trailing="→"
@@ -508,6 +578,32 @@ const styles = StyleSheet.create({
   scheduleText: {fontSize: 12, fontWeight: '700'},
   summaryCard: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md},
   summaryEyebrow: {fontSize: 9, letterSpacing: 1.4, fontWeight: '800', marginBottom: 5},
+  strictRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  strictPressed: {opacity: 0.75},
+  strictBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  strictTick: {fontSize: 13, fontWeight: '900'},
+  strictCopy: {flex: 1},
+  strictTitle: {fontSize: 14.5, fontWeight: '700'},
+  strictBody: {fontSize: 12.5, lineHeight: 18, marginTop: 2},
+  lockedCard: {alignItems: 'flex-start'},
+  lockedTitle: {fontSize: 15, fontWeight: '700', marginBottom: 4},
+  lockedBody: {fontSize: 13, lineHeight: 19},
   summaryTitle: {fontSize: 16, fontWeight: '700'},
   summaryMeta: {fontSize: 12, marginTop: 4},
   summaryFocusIcon: {width: 46, height: 46, borderRadius: 23, borderWidth: 2, alignItems: 'center', justifyContent: 'center'},

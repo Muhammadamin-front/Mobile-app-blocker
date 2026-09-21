@@ -17,4 +17,7 @@
     <string name="notification_blocked_apps">%1$d ilova bloklangan</string>
     <string name="notification_blocked_apps_plural">%1$d ilova bloklangan</string>
     <string name="notification_starts_soon">Tez orada boshlanadi</string>
+    <string name="tile_subtitle_on">Fokus ketmoqda</string>
+    <string name="tile_subtitle_off">Fokusni boshlash</string>
+    <string name="tile_subtitle_unavailable">Avval ilova tanlang</string>
 </resources>

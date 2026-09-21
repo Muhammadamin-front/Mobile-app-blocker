@@ -26,6 +26,7 @@ data class StoredSession(
   val status: String,
   val completedReason: String?,
   val blockedAttempts: Int,
+  val strict: Boolean,
 )
 
 class FocusDatabase private constructor(context: Context) :
@@ -52,6 +53,7 @@ class FocusDatabase private constructor(context: Context) :
         status TEXT NOT NULL,
         completed_reason TEXT,
         ended_at INTEGER,
+        strict INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL
       )""",
     )
@@ -82,6 +84,10 @@ class FocusDatabase private constructor(context: Context) :
       db.execSQL("ALTER TABLE sessions ADD COLUMN ended_at INTEGER")
       db.execSQL("UPDATE sessions SET ended_at = end_timestamp WHERE status = 'COMPLETED'")
     }
+    if (oldVersion < 3) {
+      // A strict session refuses to be ended early; older rows were all ordinary.
+      db.execSQL("ALTER TABLE sessions ADD COLUMN strict INTEGER NOT NULL DEFAULT 0")
+    }
   }
 
   @Synchronized
@@ -90,6 +96,7 @@ class FocusDatabase private constructor(context: Context) :
     startTimestamp: Long,
     endTimestamp: Long,
     blockedApps: List<StoredApp>,
+    strict: Boolean,
   ): StoredSession {
     require(id.isNotBlank()) { "Session id is required." }
     require(blockedApps.isNotEmpty()) { "Choose at least one app." }
@@ -119,6 +126,7 @@ class FocusDatabase private constructor(context: Context) :
       put("boot_count", currentBootCount())
       put("blocked_apps", appsToJson(blockedApps.map { it.copy(iconBase64 = null) }))
       put("status", status)
+      put("strict", if (strict) 1 else 0)
       put("created_at", nowWall)
     }
     writableDatabase.insertOrThrow("sessions", null, values)
@@ -128,6 +136,10 @@ class FocusDatabase private constructor(context: Context) :
   @Synchronized
   fun stopSession(): StoredSession? {
     val current = getCurrentSession() ?: return null
+    // The whole point of a strict session is that this call does not work.
+    check(!current.strict || remainingMillis(current) <= 0L) {
+      "This is a strict session. It cannot be ended before it finishes."
+    }
     val values = ContentValues().apply {
       put("status", "STOPPED")
       put("completed_reason", "user")
@@ -425,6 +437,7 @@ class FocusDatabase private constructor(context: Context) :
     status = cursor.getString(cursor.getColumnIndexOrThrow("status")),
     completedReason = cursor.getString(cursor.getColumnIndexOrThrow("completed_reason")),
     blockedAttempts = cursor.getInt(cursor.getColumnIndexOrThrow("attempts")),
+    strict = cursor.getInt(cursor.getColumnIndexOrThrow("strict")) == 1,
   )
 
   private fun currentBootCount(): Int = try {
@@ -435,11 +448,12 @@ class FocusDatabase private constructor(context: Context) :
 
   companion object {
     private const val DATABASE_NAME = "focus_guard.db"
-    private const val DATABASE_VERSION = 2
+    private const val DATABASE_VERSION = 3
     const val SELECTED_APPS = "selected_apps"
     const val ONBOARDING_COMPLETED = "onboarding_completed"
     const val THEME_PREFERENCE = "theme_preference"
     const val LANGUAGE_PREFERENCE = "language_preference"
+    const val TILE_DURATION_MINUTES = "tile_duration_minutes"
 
     @Volatile private var instance: FocusDatabase? = null
 

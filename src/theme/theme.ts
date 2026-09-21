@@ -49,9 +49,9 @@ export const radii = {
 export const lightTheme: Theme = {
   background: '#031225',
   backgroundAccent: '#123A68',
-  surface: '#0B213AD9',
-  surfaceRaised: '#102B49F2',
-  surfaceMuted: '#183A5AB8',
+  surface: '#081D33F5',
+  surfaceRaised: '#0C2745FA',
+  surfaceMuted: '#163854EC',
   text: '#F9FBFF',
   textMuted: '#B6C6D9',
   textSubtle: '#7890AA',

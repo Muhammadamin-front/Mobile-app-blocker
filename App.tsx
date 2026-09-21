@@ -7,7 +7,7 @@ import {AppStoreProvider, useAppStore} from './src/state/AppStore';
 
 function ThemedApp() {
   const systemScheme = useColorScheme();
-  const {themePreference, activeSession} = useAppStore();
+  const {themePreference} = useAppStore();
   const isDark =
     themePreference === 'dark' ||
     (themePreference === 'system' && systemScheme === 'dark');
@@ -15,7 +15,7 @@ function ThemedApp() {
   return (
     <>
       <StatusBar
-        barStyle={activeSession ? 'dark-content' : 'light-content'}
+        barStyle="light-content"
       />
       <AppShell isDark={isDark} />
     </>
