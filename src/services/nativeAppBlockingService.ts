@@ -1,5 +1,7 @@
 import {NativeModules, Platform} from 'react-native';
 
+import {IconMap, withoutIcons} from '../domain/icons';
+
 import {
   AppSettings,
   FocusSession,
@@ -19,6 +21,7 @@ interface NativeFocusGuardModule {
   stopBlockingSession(): Promise<FocusSession | null>;
   getActiveSession(): Promise<FocusSession | null>;
   getSelectedApps(): Promise<InstalledApp[]>;
+  getAppIcons(packages: string[]): Promise<IconMap>;
   setSelectedApps(apps: InstalledApp[]): Promise<void>;
   getHistory(): Promise<FocusSession[]>;
   getStatistics(): Promise<FocusStats>;
@@ -46,11 +49,15 @@ export const appBlockingService: AppBlockingService = {
   requestRequiredPermissions: () =>
     getNativeModule().openAccessibilitySettings(),
   startBlockingSession: input =>
-    getNativeModule().startBlockingSession(input),
+    getNativeModule().startBlockingSession({
+      ...input,
+      blockedApps: withoutIcons(input.blockedApps),
+    }),
   stopBlockingSession: () => getNativeModule().stopBlockingSession(),
   getActiveSession: () => getNativeModule().getActiveSession(),
   getBlockedApps: () => getNativeModule().getSelectedApps(),
-  setBlockedApps: apps => getNativeModule().setSelectedApps(apps),
+  getAppIcons: packages => getNativeModule().getAppIcons(packages),
+  setBlockedApps: apps => getNativeModule().setSelectedApps(withoutIcons(apps)),
   getHistory: () => getNativeModule().getHistory(),
   getStatistics: () => getNativeModule().getStatistics(),
   getSettings: () => getNativeModule().getSettings(),

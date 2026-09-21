@@ -278,8 +278,10 @@ class FocusDatabase private constructor(context: Context) :
     )
   }
 
+  /** Icons are never persisted: they are large, they change with themes, and the launcher owns them. */
   @Synchronized
-  fun setSelectedApps(apps: List<StoredApp>) = setSetting(SELECTED_APPS, appsToJson(apps))
+  fun setSelectedApps(apps: List<StoredApp>) =
+    setSetting(SELECTED_APPS, appsToJson(apps.map { it.copy(iconBase64 = null) }))
 
   @Synchronized
   fun getSelectedApps(): List<StoredApp> = appsFromJson(getSetting(SELECTED_APPS) ?: "[]")

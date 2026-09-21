@@ -47,3 +47,17 @@ export function formatMinutes(minutes: number): string {
   const remainder = minutes % 60;
   return remainder ? `${hours}h ${remainder}m` : `${hours} hr`;
 }
+
+/** Compact total for the statistics tiles: minutes below an hour, one decimal above. */
+export function formatFocusTotal(totalMillis: number): string {
+  const minutes = Math.max(0, Math.round(totalMillis / 60_000));
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+  const hours = minutes / 60;
+  return `${hours >= 10 ? Math.round(hours) : Math.round(hours * 10) / 10}h`;
+}
+
+export function pluralize(count: number, singular: string): string {
+  return `${count} ${singular}${count === 1 ? '' : 's'}`;
+}

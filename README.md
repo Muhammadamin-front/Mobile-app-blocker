@@ -46,6 +46,11 @@ Why this mechanism:
 
 Android does not provide a public, unbypassable consumer API equivalent to managed enterprise app suspension. This design is a best-effort focus aid: the user can always disable Accessibility access or uninstall FocusGuard, and FocusGuard must not interfere with those controls.
 
+Two limits are worth stating plainly, because both were observed on a device:
+
+- **Force-stopping FocusGuard disables its accessibility service.** Android clears the service from `enabled_accessibility_services` and does not rebind it; the user must re-enable it in Settings. Aggressive vendor battery managers can trigger the same path. FocusGuard cannot prevent this, so instead it detects the lost permission and says so rather than showing a session it is no longer enforcing.
+- **Background activity starts are not guaranteed.** Launching the block screen works on AOSP and Google builds, but some vendors restrict it further, which is why the service falls back to the home action.
+
 Official references:
 
 - [AccessibilityService API](https://developer.android.com/reference/android/accessibilityservice/AccessibilityService)
@@ -89,7 +94,13 @@ Accessibility approval is a policy review, not a technical guarantee. Google Pla
 - After reboot, persisted epoch timestamps are the fallback because elapsed realtime resets.
 - The service normalizes expiry on every relevant foreground event; the UI and boot/time receiver also normalize persisted state.
 - Missing/corrupt selected-app JSON falls back to an empty list. An uninstalled blocked app remains harmless in history and no longer emits events.
-- Revoking Accessibility access is always respected. The UI verifies actual enabled-service state whenever it returns to the foreground.
+- Revoking Accessibility access is always respected. The UI verifies actual enabled-service state whenever it returns to the foreground, and re-checks it on a timer while a session is running so a session can never be presented as enforced when it is not.
+- Starting a session is refused natively unless the accessibility service is actually enabled.
+- The service keeps an in-memory session snapshot, so a window change costs no database work, and the snapshot is invalidated whenever the session changes or is about to expire.
+- Every enforcement step is wrapped: a failure logs and retries on the next window change rather than taking the process down.
+- If Android refuses the background activity start, the service falls back to sending the user to the home screen, and it verifies that the block screen actually reached the foreground.
+- Apps uninstalled after being selected are pruned from the stored selection.
+- App icons are loaded from the package manager on demand and never written to the database.
 
 ## Project structure
 
@@ -125,6 +136,10 @@ cd android && ./gradlew assembleDebug
 
 Install with `npm run android`, complete the in-app disclosure, then enable **FocusGuard app blocking** in Android Accessibility settings.
 
+### Sideloading a release build for testing
+
+A debug APK expects a running Metro server and will not work on someone else's phone; build and share a signed release APK instead. Because the upload key is unknown to Google, Play Protect usually blocks the first install: the tester taps **More details → Install anyway**, or temporarily turns off Play Protect scanning in the Play Store.
+
 ## Manual Android test checklist
 
 Run on at least one AOSP/Pixel device and representative Samsung/Xiaomi devices because vendors alter background/task behavior.
@@ -138,7 +153,8 @@ Run on at least one AOSP/Pixel device and representative Samsung/Xiaomi devices 
 - [ ] Press Back and **Back to Home**; both go to the launcher without revealing a usable blocked app.
 - [ ] Repeatedly select the blocked app from Recents; verify no crash or activity loop.
 - [ ] Open an allowed app and verify it remains usable.
-- [ ] Force-stop only the React Native UI process without disabling Accessibility; open a blocked app and verify enforcement continues.
+- [ ] Swipe FocusGuard away from Recents (do not force-stop); open a blocked app and verify enforcement continues.
+- [ ] Force-stop FocusGuard from App info; confirm Android disables the accessibility service, that blocking stops, and that FocusGuard reports the lost permission instead of claiming the session is still enforced.
 - [ ] Reopen FocusGuard and verify the active session and countdown restore.
 - [ ] Change timezone and wall clock during a session; verify same-boot expiry follows elapsed time.
 - [ ] Reboot during a session; verify the session restores and expires using persisted epoch time.

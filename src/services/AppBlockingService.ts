@@ -1,3 +1,4 @@
+import {IconMap} from '../domain/icons';
 import {
   AppSettings,
   FocusSession,
@@ -16,6 +17,7 @@ export interface AppBlockingService {
   stopBlockingSession(): Promise<FocusSession | null>;
   getActiveSession(): Promise<FocusSession | null>;
   getBlockedApps(): Promise<InstalledApp[]>;
+  getAppIcons(packages: string[]): Promise<IconMap>;
   setBlockedApps(apps: InstalledApp[]): Promise<void>;
   getHistory(): Promise<FocusSession[]>;
   getStatistics(): Promise<FocusStats>;

@@ -9,6 +9,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.provider.Settings
+import android.provider.Telephony
 import android.telecom.TelecomManager
 import android.util.Base64
 import android.view.accessibility.AccessibilityManager
@@ -90,18 +91,27 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
 
   @ReactMethod
   fun startBlockingSession(input: ReadableMap, promise: Promise) = background(promise) {
+    check(isAccessibilityServiceEnabled()) {
+      "Enable the FocusGuard accessibility service before starting a session."
+    }
     val id = input.requireString("id")
     val startTimestamp = input.requireLong("startTimestamp")
     val endTimestamp = input.requireLong("endTimestamp")
+    val excluded = criticalPackages()
     val apps = input.getArray("blockedApps")?.toStoredApps().orEmpty()
-      .filterNot { it.packageName in criticalPackages() }
+      .filterNot { it.packageName in excluded }
+      .filter { isLaunchable(it.packageName) }
     database.setSelectedApps(apps)
-    database.startSession(id, startTimestamp, endTimestamp, apps).toWritableMap()
+    val session = database.startSession(id, startTimestamp, endTimestamp, apps)
+    FocusAccessibilityService.invalidateCache()
+    session.toWritableMap()
   }
 
   @ReactMethod
   fun stopBlockingSession(promise: Promise) = background(promise) {
-    database.stopSession()?.toWritableMap()
+    val stopped = database.stopSession()
+    FocusAccessibilityService.invalidateCache()
+    stopped?.toWritableMap()
   }
 
   @ReactMethod
@@ -134,9 +144,32 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     }
   }
 
+  /** Drops apps the user has uninstalled since choosing them so the list never goes stale. */
   @ReactMethod
   fun getSelectedApps(promise: Promise) = background(promise) {
-    database.getSelectedApps().toWritableArray()
+    val stored = database.getSelectedApps()
+    val available = stored.filter { isLaunchable(it.packageName) }
+    if (available.size != stored.size) {
+      database.setSelectedApps(available)
+    }
+    available.toWritableArray()
+  }
+
+  /** Icons are fetched on demand instead of being persisted, so they stay out of the database. */
+  @ReactMethod
+  fun getAppIcons(packages: ReadableArray, promise: Promise) = background(promise) {
+    val packageManager = context.packageManager
+    Arguments.createMap().apply {
+      for (index in 0 until packages.size()) {
+        val packageName = packages.getString(index) ?: continue
+        val drawable = try {
+          packageManager.getApplicationIcon(packageName)
+        } catch (_: Exception) {
+          null
+        } ?: continue
+        drawableToBase64(drawable)?.let { putString(packageName, it) }
+      }
+    }
   }
 
   @ReactMethod
@@ -169,6 +202,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   @ReactMethod
   fun resetAllData(promise: Promise) = background(promise) {
     database.resetAllData()
+    FocusAccessibilityService.invalidateCache()
     null
   }
 
@@ -192,8 +226,12 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
       android.content.pm.PackageManager.MATCH_DEFAULT_ONLY,
     )?.activityInfo?.packageName?.let(packages::add)
     context.getSystemService(TelecomManager::class.java)?.defaultDialerPackage?.let(packages::add)
+    runCatching { Telephony.Sms.getDefaultSmsPackage(context) }.getOrNull()?.let(packages::add)
     return packages
   }
+
+  private fun isLaunchable(packageName: String): Boolean =
+    runCatching { context.packageManager.getLaunchIntentForPackage(packageName) }.getOrNull() != null
 
   private fun drawableToBase64(drawable: Drawable): String? = try {
     val source = (drawable as? BitmapDrawable)?.bitmap

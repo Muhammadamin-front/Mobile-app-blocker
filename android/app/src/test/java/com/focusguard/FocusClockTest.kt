@@ -36,4 +36,11 @@ class FocusClockTest {
     assertFalse(FocusClock.isSameBoot(-1, -1))
     assertTrue(FocusClock.hasStarted(11_000L, 1L, 10_000L, 50_000L, -1, -1))
   }
+
+  @Test
+  fun snapshotIsNeverTrustedPastTheSessionEnd() {
+    assertEquals(4_000L, FocusClock.cacheWindowMillis(10_000L, 4_000L))
+    assertEquals(1_200L, FocusClock.cacheWindowMillis(1_200L, 4_000L))
+    assertEquals(0L, FocusClock.cacheWindowMillis(-500L, 4_000L))
+  }
 }

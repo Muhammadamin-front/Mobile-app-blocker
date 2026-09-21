@@ -57,4 +57,11 @@ object FocusClock {
   } else {
     startWall - nowWall
   }.coerceAtLeast(0L)
+
+  /**
+   * How long an in-memory session snapshot may be trusted: never past the session's own end, and
+   * never longer than [maxMillis] so a session started or stopped elsewhere is picked up quickly.
+   */
+  fun cacheWindowMillis(remainingMillis: Long, maxMillis: Long): Long =
+    remainingMillis.coerceIn(0L, maxMillis)
 }
