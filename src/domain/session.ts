@@ -72,3 +72,11 @@ export function formatFocusHm(totalMillis: number): string {
   const remainder = minutes % 60;
   return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
 }
+
+/** Like formatFocusHm, but a real span shorter than a minute never reads as nothing. */
+export function formatSpanHm(totalMillis: number): string {
+  if (totalMillis > 0 && totalMillis < 60_000) {
+    return '<1m';
+  }
+  return formatFocusHm(totalMillis);
+}

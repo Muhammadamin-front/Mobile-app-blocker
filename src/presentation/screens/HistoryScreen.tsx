@@ -2,11 +2,11 @@ import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 
 import {TrendRange} from '../../domain/models';
-import {formatFocusHm, formatMinutes, pluralize} from '../../domain/session';
+import {formatFocusHm, formatMinutes, formatSpanHm, pluralize} from '../../domain/session';
 import {useAppStore} from '../../state/AppStore';
 import {radii, spacing, Theme} from '../../theme/theme';
 import {FocusChart} from '../FocusChart';
-import {Card, EmptyState, ScreenHeader, SectionTitle, StatusBadge} from '../components';
+import {Card, EmptyState, PrimaryButton, ScreenHeader, SectionTitle, StatusBadge} from '../components';
 
 const RANGES: Array<{id: TrendRange; label: string; caption: string}> = [
   {id: 'week', label: 'Week', caption: 'Last 7 days'},
@@ -15,7 +15,17 @@ const RANGES: Array<{id: TrendRange; label: string; caption: string}> = [
 ];
 
 export function HistoryScreen({theme}: {theme: Theme}) {
-  const {history, stats, trends, trendRange, trendsLoading, setTrendRange} = useAppStore();
+  const {
+    history,
+    permission,
+    screenTime,
+    stats,
+    trends,
+    trendRange,
+    trendsLoading,
+    openUsageAccessSettings,
+    setTrendRange,
+  } = useAppStore();
   const topAttempts = trends.topApps;
   const [selectedBucket, setSelectedBucket] = useState<number | null>(null);
   const range = RANGES.find(item => item.id === trendRange) ?? RANGES[0];
@@ -160,6 +170,68 @@ export function HistoryScreen({theme}: {theme: Theme}) {
       ) : null}
 
       <View style={styles.sectionBlock}>
+        <SectionTitle theme={theme} detail={permission.usageAccessEnabled ? range.caption : 'Optional'}>
+          Screen time
+        </SectionTitle>
+        {!permission.usageAccessEnabled ? (
+          <Card theme={theme} style={styles.usageCard}>
+            <Text style={[styles.usageTitle, {color: theme.text}]}>See where the time actually goes</Text>
+            <Text style={[styles.usageBody, {color: theme.textMuted}]}>
+              Android can tell FocusGuard how long each app was on screen. Turning this
+              on adds the breakdown below; leaving it off changes nothing about blocking.
+              The numbers stay on this phone either way.
+            </Text>
+            <PrimaryButton
+              label="Turn on screen time"
+              onPress={openUsageAccessSettings}
+              theme={theme}
+              variant="secondary"
+            />
+          </Card>
+        ) : screenTime.apps.length ? (
+          <Card theme={theme} style={styles.attemptsCard}>
+            {screenTime.apps.map((app, index) => {
+              const max = screenTime.apps[0]?.usageMillis || 1;
+              return (
+                <View key={app.packageName} style={styles.attemptRow}>
+                  <View style={[styles.rank, {backgroundColor: theme.surfaceMuted}]}>
+                    <Text style={[styles.rankText, {color: theme.textMuted}]}>{index + 1}</Text>
+                  </View>
+                  <View style={styles.attemptCopy}>
+                    <View style={styles.attemptLabelRow}>
+                      <Text style={[styles.attemptName, {color: theme.text}]} numberOfLines={1}>{app.appName}</Text>
+                      <Text style={[styles.attemptCount, {color: theme.textMuted}]}>{formatSpanHm(app.usageMillis)}</Text>
+                    </View>
+                    <View style={[styles.attemptTrack, {backgroundColor: theme.surfaceMuted}]}>
+                      <View
+                        style={[
+                          styles.attemptFill,
+                          {backgroundColor: theme.chartSeries, width: `${Math.max(12, app.usageMillis / max * 100)}%`},
+                        ]}
+                      />
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+            <Text style={[styles.usageFootnote, {color: theme.textMuted}]}>
+              Android keeps less detail the further back a window reaches, so long
+              ranges show the best it can still account for.
+            </Text>
+          </Card>
+        ) : (
+          <Card theme={theme}>
+            <EmptyState
+              theme={theme}
+              symbol="◴"
+              title="Nothing recorded yet"
+              body="Android has no screen-time data for this window."
+            />
+          </Card>
+        )}
+      </View>
+
+      <View style={styles.sectionBlock}>
         <SectionTitle theme={theme} detail={`${history.length} total`}>Recent sessions</SectionTitle>
         {history.length ? history.map(session => {
           const durationMinutes = Math.max(1, Math.round((session.endTimestamp - session.startTimestamp) / 60_000));
@@ -187,7 +259,7 @@ export function HistoryScreen({theme}: {theme: Theme}) {
                 <View style={styles.sessionMetaRow}>
                   <Text style={[styles.sessionMeta, {color: theme.textMuted}]}>{pluralize(session.blockedApps.length, 'app')} quieted</Text>
                   <View style={[styles.metaDot, {backgroundColor: theme.textSubtle}]} />
-                  <Text style={[styles.sessionMeta, {color: theme.textMuted}]}>{session.blockedAttempts} attempts stopped</Text>
+                  <Text style={[styles.sessionMeta, {color: theme.textMuted}]}>{pluralize(session.blockedAttempts, 'attempt')} stopped</Text>
                 </View>
               </View>
             </Card>
@@ -233,6 +305,10 @@ const styles = StyleSheet.create({
   readout: {marginBottom: spacing.md},
   readoutValue: {fontSize: 26, fontWeight: '800', letterSpacing: -0.5},
   readoutLabel: {fontSize: 12, fontWeight: '600', marginTop: 2},
+  usageCard: {gap: spacing.sm},
+  usageTitle: {fontSize: 16, fontWeight: '700'},
+  usageBody: {fontSize: 13, lineHeight: 20},
+  usageFootnote: {fontSize: 11, lineHeight: 16, marginTop: spacing.xs},
   content: {paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xxxl},
   heroCard: {marginBottom: spacing.xxl, padding: spacing.xl},
   heroTop: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},

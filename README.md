@@ -107,6 +107,27 @@ recessive hairline grid, labels placed from a measured layout so a dense month
 never clips them, and a tap readout that supplements the axis rather than being
 the only way to read a value.
 
+## Screen time (optional)
+
+`PACKAGE_USAGE_STATS` is declared but never required. Blocking, sessions, history,
+and the focus chart all work without it; granting it only adds the per-app
+breakdown on the Progress tab.
+
+- The user turns it on themselves in Android's usage access screen, after an
+  in-app explanation, and can withdraw it at any time. The UI reads the real
+  AppOps state rather than remembering an answer.
+- Foreground time is read with `UsageStatsManager` over the same window as the
+  chart. Android keeps less detail the further back a window reaches, so a long
+  range shows the best it can still account for, and the UI says so.
+- FocusGuard's own package is left out: time spent reading the report is not a
+  distraction.
+- Nothing read here is stored, aggregated over time, or transmitted. It is
+  queried on demand and rendered.
+
+For Play, this is a separate declaration from the Accessibility one: usage access
+is a sensitive permission, so the store listing and Data safety form must describe
+it as an optional, local-only statistics feature.
+
 ## Reliability behavior
 
 - The native database is written before a session is returned to React Native.
@@ -187,6 +208,8 @@ Run on at least one AOSP/Pixel device and representative Samsung/Xiaomi devices 
 - [ ] Open Progress and switch Week/Month/Year; confirm the axis labels are never clipped, tapping a bar names it, and the all-time total is consistent with the selected window.
 - [ ] Run a session across midnight and confirm it is split across both days.
 - [ ] Upgrade over an older install and confirm the `ended_at` migration keeps existing history readable.
+- [ ] Leave usage access off and confirm Progress shows the explanation, never an empty breakdown, and that blocking is unaffected.
+- [ ] Grant usage access, confirm the per-app breakdown appears and follows the selected range, then revoke it and confirm the section returns to the explanation.
 - [ ] Inspect the release manifest and confirm it has no `INTERNET` or `QUERY_ALL_PACKAGES` permission.
 
 ## Release signing

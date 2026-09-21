@@ -1,7 +1,7 @@
 import React, {useMemo, useState} from 'react';
 import {LayoutChangeEvent, Pressable, StyleSheet, Text, View} from 'react-native';
 
-import {formatFocusHm} from '../domain/session';
+import {formatSpanHm} from '../domain/session';
 import {FocusBucket, TrendRange} from '../domain/models';
 import {spacing, Theme} from '../theme/theme';
 
@@ -57,7 +57,7 @@ export function FocusChart({
       <View style={styles.plotArea} onLayout={onPlotLayout}>
         <View style={styles.axisLabels}>
           <Text style={[styles.axisValue, {color: theme.textMuted}]}>
-            {peak > 0 ? formatFocusHm(peak) : ''}
+            {peak > 0 ? formatSpanHm(peak) : ''}
           </Text>
         </View>
         <View
@@ -81,7 +81,7 @@ export function FocusChart({
               <Pressable
                 key={bucket.startTimestamp}
                 accessibilityRole="button"
-                accessibilityLabel={`${bucket.label}, ${formatFocusHm(bucket.focusMillis)} of focus`}
+                accessibilityLabel={`${bucket.label}, ${formatSpanHm(bucket.focusMillis)} of focus`}
                 accessibilityState={{selected}}
                 onPress={() => onSelect(selected ? null : index)}
                 style={styles.column}>

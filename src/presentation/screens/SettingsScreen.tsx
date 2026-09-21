@@ -18,6 +18,7 @@ export function SettingsScreen({theme}: {theme: Theme}) {
     permission,
     refresh,
     openPermissionSettings,
+    openUsageAccessSettings,
     themePreference,
     setTheme,
     resetAllData,
@@ -86,6 +87,30 @@ export function SettingsScreen({theme}: {theme: Theme}) {
         <Pressable accessibilityRole="button" onPress={refresh} style={styles.recheckButton}>
           <Text style={[styles.recheckText, {color: theme.textMuted}]}>Recheck permission status</Text>
         </Pressable>
+      </Card>
+
+      <Card theme={theme} style={styles.optionalCard}>
+        <View style={styles.optionalHeader}>
+          <View style={styles.permissionCopy}>
+            <Text style={[styles.permissionTitle, {color: theme.text}]}>Screen time (optional)</Text>
+            <Text style={[styles.permissionBody, {color: theme.textMuted}]}>
+              {permission.usageAccessEnabled
+                ? 'Progress shows which apps held your attention.'
+                : 'Off. Blocking works exactly the same without it.'}
+            </Text>
+          </View>
+          <StatusBadge
+            label={permission.usageAccessEnabled ? 'On' : 'Off'}
+            theme={theme}
+            tone={permission.usageAccessEnabled ? 'success' : 'neutral'}
+          />
+        </View>
+        <PrimaryButton
+          label={permission.usageAccessEnabled ? 'Manage usage access' : 'Turn on screen time'}
+          onPress={openUsageAccessSettings}
+          theme={theme}
+          variant="secondary"
+        />
       </Card>
 
       <SectionTitle theme={theme}>Appearance</SectionTitle>
@@ -181,6 +206,8 @@ const styles = StyleSheet.create({
   permissionTitle: {fontSize: 14, fontWeight: '700', marginBottom: 3},
   permissionBody: {fontSize: 11, lineHeight: 16},
   divider: {height: 1, marginVertical: spacing.lg},
+  optionalCard: {marginTop: spacing.sm, gap: spacing.md},
+  optionalHeader: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
   recheckButton: {alignSelf: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.md},
   recheckText: {fontSize: 12, fontWeight: '700'},
   appearanceCard: {marginBottom: spacing.xl},

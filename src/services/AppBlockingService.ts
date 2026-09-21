@@ -6,6 +6,7 @@ import {
   FocusStats,
   InstalledApp,
   PermissionStatus,
+  ScreenTimeReport,
   StartSessionInput,
   ThemePreference,
   TrendRange,
@@ -15,6 +16,8 @@ export interface AppBlockingService {
   getInstalledApps(): Promise<InstalledApp[]>;
   getPermissionStatus(): Promise<PermissionStatus>;
   requestRequiredPermissions(): Promise<void>;
+  requestUsageAccess(): Promise<void>;
+  getScreenTime(range: TrendRange): Promise<ScreenTimeReport>;
   startBlockingSession(input: StartSessionInput): Promise<FocusSession>;
   stopBlockingSession(): Promise<FocusSession | null>;
   getActiveSession(): Promise<FocusSession | null>;

@@ -3,7 +3,7 @@ import {
   withIcons,
   withoutIcons,
 } from '../src/domain/icons';
-import {formatFocusTotal, pluralize} from '../src/domain/session';
+import {formatFocusTotal, formatSpanHm, pluralize} from '../src/domain/session';
 
 const apps = [
   {packageName: 'com.example.social', appName: 'Social'},
@@ -47,6 +47,14 @@ describe('statistics formatting', () => {
     expect(formatFocusTotal(90 * 60_000)).toBe('1.5h');
     expect(formatFocusTotal(12 * 3_600_000)).toBe('12h');
     expect(formatFocusTotal(-5)).toBe('0m');
+  });
+
+  it('never rounds a real span down to nothing', () => {
+    expect(formatSpanHm(0)).toBe('0m');
+    expect(formatSpanHm(30_000)).toBe('<1m');
+    expect(formatSpanHm(59_999)).toBe('<1m');
+    expect(formatSpanHm(60_000)).toBe('1m');
+    expect(formatSpanHm(95 * 60_000)).toBe('1h 35m');
   });
 
   it('agrees with itself about singular and plural counts', () => {

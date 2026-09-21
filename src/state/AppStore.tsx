@@ -18,6 +18,7 @@ import {
   FocusStats,
   InstalledApp,
   PermissionStatus,
+  ScreenTimeReport,
   StartSessionInput,
   ThemePreference,
   TrendRange,
@@ -29,6 +30,13 @@ const emptyStats: FocusStats = {
   totalFocusMillis: 0,
   totalBlockedAttempts: 0,
   attemptsByPackage: [],
+};
+
+const emptyScreenTime: ScreenTimeReport = {
+  available: false,
+  windowStart: 0,
+  totalMillis: 0,
+  apps: [],
 };
 
 const emptyTrends: FocusTrends = {
@@ -51,6 +59,7 @@ interface AppStoreValue {
   history: FocusSession[];
   stats: FocusStats;
   trends: FocusTrends;
+  screenTime: ScreenTimeReport;
   trendRange: TrendRange;
   trendsLoading: boolean;
   permission: PermissionStatus;
@@ -63,6 +72,7 @@ interface AppStoreValue {
   startSession(input: StartSessionInput): Promise<void>;
   stopSession(): Promise<void>;
   openPermissionSettings(): Promise<void>;
+  openUsageAccessSettings(): Promise<void>;
   completeOnboarding(): Promise<void>;
   setTheme(theme: ThemePreference): Promise<void>;
   resetAllData(): Promise<void>;
@@ -81,10 +91,12 @@ export function AppStoreProvider({children}: PropsWithChildren) {
   const [history, setHistory] = useState<FocusSession[]>([]);
   const [stats, setStats] = useState<FocusStats>(emptyStats);
   const [trends, setTrends] = useState<FocusTrends>(emptyTrends);
+  const [screenTime, setScreenTime] = useState<ScreenTimeReport>(emptyScreenTime);
   const [trendRange, setTrendRange] = useState<TrendRange>('week');
   const [trendsLoading, setTrendsLoading] = useState(true);
   const [permission, setPermission] = useState<PermissionStatus>({
     accessibilityEnabled: false,
+    usageAccessEnabled: false,
     ready: false,
   });
   const [settings, setSettings] = useState<AppSettings>({
@@ -210,6 +222,27 @@ export function AppStoreProvider({children}: PropsWithChildren) {
     };
   }, [history, stats, trendRange]);
 
+  // Screen time is optional data behind an optional permission: when it is off we
+  // ask for nothing and show nothing rather than holding an empty section open.
+  useEffect(() => {
+    if (!permission.usageAccessEnabled) {
+      setScreenTime(emptyScreenTime);
+      return;
+    }
+    let cancelled = false;
+    appBlockingService
+      .getScreenTime(trendRange)
+      .then(next => {
+        if (!cancelled) {
+          setScreenTime(next);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [permission.usageAccessEnabled, trendRange, history]);
+
   const loadInstalledApps = useCallback(async () => {
     if (installedApps.length) {
       return;
@@ -264,6 +297,10 @@ export function AppStoreProvider({children}: PropsWithChildren) {
     await run(() => appBlockingService.requestRequiredPermissions());
   }, [run]);
 
+  const openUsageAccessSettings = useCallback(async () => {
+    await run(() => appBlockingService.requestUsageAccess());
+  }, [run]);
+
   const completeOnboarding = useCallback(async () => {
     await run(async () => {
       await appBlockingService.completeOnboarding();
@@ -290,6 +327,7 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       setHistory([]);
       setStats(emptyStats);
       setTrends(emptyTrends);
+      setScreenTime(emptyScreenTime);
       setSettings({onboardingCompleted: false, themePreference: 'system'});
     });
     setBusy(false);
@@ -319,6 +357,7 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       history,
       stats,
       trends,
+      screenTime,
       trendRange,
       trendsLoading,
       setTrendRange,
@@ -331,6 +370,7 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       startSession,
       stopSession,
       openPermissionSettings,
+      openUsageAccessSettings,
       completeOnboarding,
       setTheme,
       resetAllData,
@@ -347,9 +387,11 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       loadInstalledApps,
       loading,
       openPermissionSettings,
+      openUsageAccessSettings,
       permission,
       refresh,
       resetAllData,
+      screenTime,
       settings,
       startSession,
       stats,

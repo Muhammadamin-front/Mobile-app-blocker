@@ -9,6 +9,7 @@ import {
   FocusStats,
   InstalledApp,
   PermissionStatus,
+  ScreenTimeReport,
   StartSessionInput,
   ThemePreference,
   TrendRange,
@@ -19,6 +20,8 @@ interface NativeFocusGuardModule {
   getInstalledApps(): Promise<InstalledApp[]>;
   getPermissionStatus(): Promise<PermissionStatus>;
   openAccessibilitySettings(): Promise<void>;
+  openUsageAccessSettings(): Promise<void>;
+  getScreenTime(range: TrendRange): Promise<ScreenTimeReport>;
   startBlockingSession(input: StartSessionInput): Promise<FocusSession>;
   stopBlockingSession(): Promise<FocusSession | null>;
   getActiveSession(): Promise<FocusSession | null>;
@@ -51,6 +54,8 @@ export const appBlockingService: AppBlockingService = {
   getPermissionStatus: () => getNativeModule().getPermissionStatus(),
   requestRequiredPermissions: () =>
     getNativeModule().openAccessibilitySettings(),
+  requestUsageAccess: () => getNativeModule().openUsageAccessSettings(),
+  getScreenTime: range => getNativeModule().getScreenTime(range),
   startBlockingSession: input =>
     getNativeModule().startBlockingSession({
       ...input,

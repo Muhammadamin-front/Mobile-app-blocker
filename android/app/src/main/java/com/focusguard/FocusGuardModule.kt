@@ -29,6 +29,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   ReactContextBaseJavaModule(context) {
 
   private val database = FocusDatabase.get(context)
+  private val usageReporter = UsageReporter(context)
   private val executor = Executors.newSingleThreadExecutor()
 
   override fun getName(): String = "FocusGuard"
@@ -74,6 +75,8 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     val enabled = isAccessibilityServiceEnabled()
     promise.resolve(Arguments.createMap().apply {
       putBoolean("accessibilityEnabled", enabled)
+      // Usage access is optional: blocking is ready without it.
+      putBoolean("usageAccessEnabled", usageReporter.hasAccess())
       putBoolean("ready", enabled)
     })
   }
@@ -87,6 +90,23 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     } catch (error: Exception) {
       promise.reject("OPEN_SETTINGS_FAILED", "Could not open Android Accessibility settings.", error)
     }
+  }
+
+  @ReactMethod
+  fun openUsageAccessSettings(promise: Promise) {
+    try {
+      val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      (context.currentActivity ?: context).startActivity(intent)
+      promise.resolve(null)
+    } catch (error: Exception) {
+      promise.reject("OPEN_SETTINGS_FAILED", "Could not open Android usage access settings.", error)
+    }
+  }
+
+  @ReactMethod
+  fun getScreenTime(range: String?, promise: Promise) = background(promise) {
+    usageReporter.report(range).toWritableMap()
   }
 
   @ReactMethod
@@ -306,6 +326,21 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     putString("packageName", packageName)
     putString("appName", appName)
     iconBase64?.let { putString("iconBase64", it) }
+  }
+
+  private fun ScreenTimeReport.toWritableMap(): WritableMap = Arguments.createMap().apply {
+    putBoolean("available", available)
+    putDouble("windowStart", windowStart.toDouble())
+    putDouble("totalMillis", totalMillis.toDouble())
+    putArray("apps", Arguments.createArray().apply {
+      apps.forEach { app ->
+        pushMap(Arguments.createMap().apply {
+          putString("packageName", app.packageName)
+          putString("appName", app.appName)
+          putDouble("usageMillis", app.usageMillis.toDouble())
+        })
+      }
+    })
   }
 
   private fun FocusTrends.toWritableMap(): WritableMap = Arguments.createMap().apply {

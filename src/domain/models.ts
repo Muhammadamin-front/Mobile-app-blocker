@@ -22,6 +22,8 @@ export interface FocusSession {
 
 export interface PermissionStatus {
   accessibilityEnabled: boolean;
+  /** Optional: powers the screen-time breakdown only, never blocking. */
+  usageAccessEnabled: boolean;
   ready: boolean;
 }
 
@@ -70,4 +72,17 @@ export interface FocusTrends {
   completedSessions: number;
   blockedAttempts: number;
   topApps: AppAttempt[];
+}
+
+export interface ScreenTimeApp {
+  packageName: string;
+  appName: string;
+  usageMillis: number;
+}
+
+export interface ScreenTimeReport {
+  available: boolean;
+  windowStart: number;
+  totalMillis: number;
+  apps: ScreenTimeApp[];
 }
