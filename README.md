@@ -142,6 +142,15 @@ timer and quote.
 - Leaving is always possible: Back and "Back to Home" work on every page. The book
   replaces the blocked app; it does not trap the user.
 
+## The mark
+
+The logo is a Q made of the session ring with a bookmark ribbon for its tail: the
+session holds, and reaching for a blocked app opens a book. Every rendition — the
+adaptive launcher icon (also used as the Android 13 themed-icon layer), the
+pre-adaptive icons, the status bar and tile icon, and the in-app mark — is generated
+from one geometry by `scripts/brand/gen_mark.py`. Edit the numbers there and run it
+with `--png` (needs Google Chrome and Pillow) rather than editing the drawables.
+
 ## The session timer outside the app
 
 While a session runs, the remaining time sits in the status bar and on the lock

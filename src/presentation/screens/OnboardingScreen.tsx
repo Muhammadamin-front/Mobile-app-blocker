@@ -5,7 +5,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {BatteryCard} from '../BatteryCard';
 import {useAppStore} from '../../state/AppStore';
 import {radii, spacing, Theme} from '../../theme/theme';
-import {BrandMark, Card, PrimaryButton, StatusBadge} from '../components';
+import {BrandGlyph, BrandMark, Card, PrimaryButton, StatusBadge} from '../components';
 
 const trustPoints = [
   {glyph: '⌁', title: 'Works offline', body: 'No account or connection'},
@@ -55,8 +55,8 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
         <View style={styles.hero}>
           <View style={[styles.heroHalo, {backgroundColor: theme.primarySoft}]}>
             <View style={[styles.heroOrbitLarge, {borderColor: `${theme.primary}28`}]}>
-              <View style={[styles.heroOrbit, {borderColor: theme.primary}]}>
-                <View style={[styles.heroCore, {backgroundColor: theme.primary}]} />
+              <View style={styles.heroGlyph}>
+                <BrandGlyph color={theme.primary} size={74} />
               </View>
             </View>
           </View>
@@ -177,9 +177,9 @@ const styles = StyleSheet.create({
   brandName: {fontSize: 16, fontWeight: '800', letterSpacing: -0.3, flex: 1, marginLeft: spacing.sm},
   hero: {alignItems: 'center', paddingTop: spacing.xxl, paddingBottom: spacing.xl},
   heroHalo: {width: 142, height: 142, borderRadius: 46, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xl, transform: [{rotate: '8deg'}]},
+  // The halo is tilted; the mark is counter-rotated so the Q stays upright.
+  heroGlyph: {transform: [{rotate: '8deg'}]},
   heroOrbitLarge: {width: 104, height: 104, borderRadius: 52, borderWidth: 10, alignItems: 'center', justifyContent: 'center', transform: [{rotate: '-8deg'}]},
-  heroOrbit: {width: 68, height: 68, borderRadius: 34, borderWidth: 5, alignItems: 'center', justifyContent: 'center'},
-  heroCore: {width: 20, height: 20, borderRadius: 10},
   eyebrow: {fontSize: 10, fontWeight: '800', letterSpacing: 1.8, marginBottom: spacing.sm},
   title: {fontSize: 36, lineHeight: 41, fontWeight: '800', letterSpacing: -1.25, textAlign: 'center'},
   subtitle: {fontSize: 15, lineHeight: 23, textAlign: 'center', marginTop: spacing.sm, maxWidth: 350},

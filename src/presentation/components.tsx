@@ -110,9 +110,25 @@ export function Card({
   );
 }
 
+const brandMark = require('../assets/brand-mark.png');
+
+/** The bare mark, tinted. Ring for the session, bookmark ribbon for the Q's tail. */
+export function BrandGlyph({color, size}: {color: string; size: number}) {
+  return (
+    <Image
+      source={brandMark}
+      resizeMode="contain"
+      style={{width: size, height: size, tintColor: color}}
+    />
+  );
+}
+
+/** The mark on a yellow tile: the app's signature in headers. */
 export function BrandMark({theme, size = 54}: {theme: Theme; size?: number}) {
   return (
     <View
+      accessible
+      accessibilityRole="image"
       accessibilityLabel="Qoriqchi"
       style={[
         styles.brandMark,
@@ -124,29 +140,7 @@ export function BrandMark({theme, size = 54}: {theme: Theme; size?: number}) {
           borderColor: theme.primary,
         },
       ]}>
-      <View
-        style={[
-          styles.brandOrbit,
-          {
-            width: size * 0.56,
-            height: size * 0.56,
-            borderRadius: size,
-            borderWidth: Math.max(2, size * 0.065),
-            borderColor: theme.inverseText,
-          },
-        ]}>
-        <View
-          style={[
-            styles.brandCore,
-            {
-              width: size * 0.16,
-              height: size * 0.16,
-              borderRadius: size,
-              backgroundColor: theme.inverseText,
-            },
-          ]}
-        />
-      </View>
+      <BrandGlyph color={theme.inverseText} size={size * 0.64} />
     </View>
   );
 }
@@ -338,8 +332,6 @@ const styles = StyleSheet.create({
     shadowRadius: 22,
   },
   brandMark: {alignItems: 'center', justifyContent: 'center', borderWidth: 1},
-  brandOrbit: {alignItems: 'center', justifyContent: 'center'},
-  brandCore: {},
   fallbackIcon: {backgroundColor: '#FFC400', alignItems: 'center', justifyContent: 'center'},
   fallbackIconText: {color: '#10100B', fontWeight: '800'},
   screenHeader: {marginBottom: spacing.xl},
