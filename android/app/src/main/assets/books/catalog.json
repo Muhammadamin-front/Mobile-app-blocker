@@ -1,0 +1,22 @@
+[
+  {
+    "id": "otkan-kunlar",
+    "title": "O‘tkan kunlar",
+    "author": "Abdulla Qodiriy",
+    "year": 1926,
+    "license": "Public domain: the author died in 1938 (Uzbek copyright lasts life + 50 years).",
+    "source": "https://wikisource.org/wiki/O%27tkan_kunlar",
+    "chapters": 58,
+    "characters": 707613
+  },
+  {
+    "id": "kecha-va-kunduz",
+    "title": "Kecha va kunduz",
+    "author": "Cho‘lpon",
+    "year": 1936,
+    "license": "Public domain: the author died in 1938 (Uzbek copyright lasts life + 50 years).",
+    "source": "https://wikisource.org/wiki/Kecha_va_kunduz",
+    "chapters": 20,
+    "characters": 509572
+  }
+]

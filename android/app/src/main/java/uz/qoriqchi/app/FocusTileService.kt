@@ -90,9 +90,10 @@ class FocusTileService : TileService() {
       TileState.OFF -> Tile.STATE_INACTIVE
       TileState.UNAVAILABLE -> Tile.STATE_UNAVAILABLE
     }
-    tile.label = getString(R.string.tile_label)
+    val strings = AppLocale.wrap(this)
+    tile.label = strings.getString(R.string.tile_label)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      tile.subtitle = getString(
+      tile.subtitle = strings.getString(
         when (state) {
           TileState.ON -> R.string.tile_subtitle_on
           TileState.OFF -> R.string.tile_subtitle_off

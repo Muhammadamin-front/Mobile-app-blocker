@@ -110,6 +110,9 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
       putBoolean("accessibilityEnabled", enabled)
       // Usage access is optional: blocking is ready without it.
       putBoolean("usageAccessEnabled", usageReporter.hasAccess())
+      // Optional too, but it decides whether OEM battery managers leave the session alone.
+      putBoolean("batteryUnrestricted", isIgnoringBatteryOptimizations())
+      putString("manufacturer", Build.MANUFACTURER.orEmpty().lowercase())
       putBoolean("ready", enabled)
     })
   }
@@ -123,6 +126,35 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     } catch (error: Exception) {
       promise.reject("OPEN_SETTINGS_FAILED", "Could not open Android Accessibility settings.", error)
     }
+  }
+
+  @ReactMethod
+  fun openBatterySettings(promise: Promise) {
+    // The list screen needs no permission. Asking for the exemption directly would
+    // need REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, which Play restricts.
+    val launcher = context.currentActivity ?: context
+    val attempts = listOf(
+      Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+      Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        .setData(android.net.Uri.parse("package:" + context.packageName)),
+    )
+    for (intent in attempts) {
+      try {
+        launcher.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        promise.resolve(null)
+        return
+      } catch (_: Exception) {
+        // try the next screen
+      }
+    }
+    promise.reject("OPEN_SETTINGS_FAILED", "Could not open battery settings.")
+  }
+
+  private fun isIgnoringBatteryOptimizations(): Boolean = try {
+    context.getSystemService(android.os.PowerManager::class.java)
+      ?.isIgnoringBatteryOptimizations(context.packageName) == true
+  } catch (_: Exception) {
+    false
   }
 
   @ReactMethod
@@ -210,6 +242,36 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   @ReactMethod
   fun getTrends(range: String?, promise: Promise) = background(promise) {
     database.getTrends(range).toWritableMap()
+  }
+
+  @ReactMethod
+  fun getBooks(promise: Promise) = background(promise) {
+    val selected = database.getSelectedBook()
+    Arguments.createMap().apply {
+      putString("selected", selected)
+      putInt("pagesRead", database.getPagesRead())
+      putArray("books", Arguments.createArray().apply {
+        BookLibrary.catalog(context).forEach { book ->
+          pushMap(Arguments.createMap().apply {
+            putString("id", book.id)
+            putString("title", book.title)
+            putString("author", book.author)
+            putInt("year", book.year)
+            putString("license", book.license)
+            putString("source", book.source)
+            putInt("pageCount", BookLibrary.pages(context, book.id).size)
+            putInt("page", database.getBookPage(book.id))
+          })
+        }
+      })
+    }
+  }
+
+  @ReactMethod
+  fun selectBook(id: String?, promise: Promise) = background(promise) {
+    require(id == null || BookLibrary.book(context, id) != null) { "Unknown book." }
+    database.setSelectedBook(id)
+    null
   }
 
   @ReactMethod

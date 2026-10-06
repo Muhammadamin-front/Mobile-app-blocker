@@ -1,5 +1,6 @@
 package uz.qoriqchi.app
 
+import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -42,6 +43,21 @@ class BlockActivity : ComponentActivity() {
   private lateinit var shieldView: FocusShieldView
   private lateinit var quoteText: TextView
   private lateinit var quoteAuthorText: TextView
+  private lateinit var scroll: ScrollView
+  private lateinit var titleView: TextView
+  private lateinit var timerCard: View
+  private lateinit var quoteBlock: View
+  private lateinit var remainingChip: TextView
+  private lateinit var readerCard: View
+  private lateinit var readerMeta: TextView
+  private lateinit var readerChapter: TextView
+  private lateinit var readerBody: TextView
+  private lateinit var readerCounter: TextView
+  private lateinit var prevButton: TextView
+  private lateinit var nextButton: TextView
+  private var readingBook: String? = null
+  private var readingPages: List<BookPage> = emptyList()
+  private var readingPage = 0
   private var blockedPackage: String = ""
   private var endElapsed = 0L
   private var lastSyncElapsed = 0L
@@ -56,9 +72,14 @@ class BlockActivity : ComponentActivity() {
         return
       }
       timerText.text = formatRemaining(remaining)
+      remainingChip.text = getString(R.string.block_remaining_chip, formatRemaining(remaining))
       if (now - lastSyncElapsed >= SYNC_INTERVAL_MILLIS) syncSession()
       handler.postDelayed(this, 500L)
     }
+  }
+
+  override fun attachBaseContext(newBase: Context) {
+    super.attachBaseContext(AppLocale.wrap(newBase))
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -122,12 +143,87 @@ class BlockActivity : ComponentActivity() {
       quoteAuthorText.text = getString(R.string.block_quote_author, quote.author)
     }
 
+    loadReader()
+
     val remaining = intent.getLongExtra(EXTRA_REMAINING_MILLIS, 0L)
     endElapsed = SystemClock.elapsedRealtime() + remaining
     lastSyncElapsed = SystemClock.elapsedRealtime()
     timerText.text = formatRemaining(remaining)
     handler.removeCallbacks(updateTimer)
     handler.post(updateTimer)
+  }
+
+  /**
+   * With a book chosen, the screen turns into a reader that continues where the last
+   * block screen left off: the minutes someone meant to spend in the blocked app go
+   * to a page instead. Without one, it stays the countdown and the quote.
+   */
+  private fun loadReader() {
+    executor.execute {
+      val id = runCatching { database.getSelectedBook() }.getOrNull()
+      val pages = if (id == null) emptyList() else BookLibrary.pages(this, id)
+      val book = id?.let { BookLibrary.book(this, it) }
+      val saved = if (id == null) 0 else runCatching { database.getBookPage(id) }.getOrDefault(0)
+      handler.post {
+        if (isFinishing || isDestroyed) return@post
+        if (id == null || book == null || pages.isEmpty()) {
+          readingBook = null
+          showReader(false)
+          return@post
+        }
+        readingBook = id
+        readingPages = pages
+        readingPage = saved.coerceIn(0, pages.lastIndex)
+        readerMeta.text = getString(R.string.reader_meta, book.author, book.title)
+        showReader(true)
+        renderPage()
+      }
+    }
+  }
+
+  private fun showReader(reading: Boolean) {
+    val bookOnly = if (reading) View.VISIBLE else View.GONE
+    val timerOnly = if (reading) View.GONE else View.VISIBLE
+    readerCard.visibility = bookOnly
+    remainingChip.visibility = bookOnly
+    shieldView.visibility = timerOnly
+    titleView.visibility = timerOnly
+    timerCard.visibility = timerOnly
+    quoteBlock.visibility = timerOnly
+  }
+
+  private fun renderPage() {
+    val page = readingPages.getOrNull(readingPage) ?: return
+    readerChapter.text = page.chapterTitle.orEmpty()
+    readerChapter.visibility = if (page.chapterTitle.isNullOrBlank()) View.GONE else View.VISIBLE
+    readerBody.text = page.text
+    readerCounter.text = getString(R.string.reader_counter, readingPage + 1, readingPages.size)
+    prevButton.isEnabled = readingPage > 0
+    prevButton.alpha = if (readingPage > 0) 1f else 0.35f
+    val last = readingPage >= readingPages.lastIndex
+    nextButton.text = getString(if (last) R.string.reader_finished else R.string.reader_next)
+    nextButton.isEnabled = !last
+    nextButton.alpha = if (last) 0.6f else 1f
+  }
+
+  private fun turnPage(delta: Int) {
+    val id = readingBook ?: return
+    val target = (readingPage + delta).coerceIn(0, readingPages.lastIndex)
+    if (target == readingPage) return
+    readingPage = target
+    renderPage()
+    readerCard.post { scroll.smoothScrollTo(0, readerCard.top) }
+    executor.execute {
+      runCatching {
+        database.setBookPage(id, target)
+        // Only a page never reached before counts as read; paging back and forth
+        // over the same spread does not inflate the total.
+        if (delta > 0 && target > database.getBookFurthest(id)) {
+          database.setBookFurthest(id, target)
+          database.recordPageRead()
+        }
+      }
+    }
   }
 
   private fun loadAppIcon(): Drawable? = runCatching {
@@ -192,7 +288,7 @@ class BlockActivity : ComponentActivity() {
       FrameLayout.LayoutParams.MATCH_PARENT,
     ))
 
-    val scroll = ScrollView(this).apply {
+    scroll = ScrollView(this).apply {
       isFillViewport = true
       isVerticalScrollBarEnabled = false
       overScrollMode = View.OVER_SCROLL_NEVER
@@ -228,9 +324,10 @@ class BlockActivity : ComponentActivity() {
         )
       }
     }
-    content.addView(text(title, 36f, Color.WHITE, Typeface.BOLD).apply {
+    titleView = text(title, 36f, Color.WHITE, Typeface.BOLD).apply {
       setLineSpacing(dp(1).toFloat(), 1f)
-    }, LinearLayout.LayoutParams(
+    }
+    content.addView(titleView, LinearLayout.LayoutParams(
       LinearLayout.LayoutParams.MATCH_PARENT,
       LinearLayout.LayoutParams.WRAP_CONTENT,
     ).apply {
@@ -276,6 +373,19 @@ class BlockActivity : ComponentActivity() {
       topMargin = dp(14)
       marginStart = dp(14)
       marginEnd = dp(14)
+    })
+
+    remainingChip = text("", 12.5f, PRIMARY_LIGHT, Typeface.BOLD).apply {
+      typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+      background = rounded(PILL_SURFACE, 50, PILL_BORDER, 1)
+      setPadding(dp(16), dp(8), dp(16), dp(8))
+      visibility = View.GONE
+    }
+    content.addView(remainingChip, LinearLayout.LayoutParams(
+      LinearLayout.LayoutParams.WRAP_CONTENT,
+      LinearLayout.LayoutParams.WRAP_CONTENT,
+    ).apply {
+      topMargin = dp(10)
     })
 
     val timerCard = LinearLayout(this).apply {
@@ -330,6 +440,75 @@ class BlockActivity : ComponentActivity() {
     ).apply {
       topMargin = dp(22)
     })
+    this.timerCard = timerCard
+
+    // The reader: the same card language as the timer, with the page as the content.
+    val reader = LinearLayout(this).apply {
+      orientation = LinearLayout.VERTICAL
+      background = rounded(SURFACE, 28, BORDER, 1)
+      elevation = dp(10).toFloat()
+      setPadding(dp(22), dp(20), dp(22), dp(18))
+      visibility = View.GONE
+    }
+    readerMeta = text("", 11f, TEXT_SUBTLE, Typeface.BOLD).apply {
+      gravity = Gravity.START
+      letterSpacing = 0.08f
+    }
+    reader.addView(readerMeta)
+    readerChapter = text("", 19f, PRIMARY_LIGHT, Typeface.BOLD).apply {
+      gravity = Gravity.START
+      setPadding(0, dp(14), 0, 0)
+    }
+    reader.addView(readerChapter)
+    readerBody = text("", 17f, Color.WHITE, Typeface.NORMAL).apply {
+      gravity = Gravity.START
+      typeface = Typeface.SERIF
+      setLineSpacing(dp(6).toFloat(), 1f)
+      setPadding(0, dp(14), 0, dp(18))
+      includeFontPadding = true
+    }
+    reader.addView(readerBody)
+    reader.addView(View(this).apply {
+      background = rounded(DIVIDER, 1)
+    }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
+      bottomMargin = dp(14)
+    })
+    val nav = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER_VERTICAL
+    }
+    prevButton = text(getString(R.string.reader_previous), 14f, PRIMARY_LIGHT, Typeface.BOLD).apply {
+      background = rounded(PILL_SURFACE, 22, PILL_BORDER, 1)
+      setPadding(dp(16), dp(12), dp(16), dp(12))
+      isClickable = true
+      setOnClickListener { turnPage(-1) }
+    }
+    nav.addView(prevButton, LinearLayout.LayoutParams(
+      LinearLayout.LayoutParams.WRAP_CONTENT,
+      dp(48),
+    ))
+    readerCounter = text("", 12f, TEXT_SUBTLE, Typeface.BOLD).apply {
+      typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+    }
+    nav.addView(readerCounter, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+    nextButton = text(getString(R.string.reader_next), 15f, DARK_BLUE, Typeface.BOLD).apply {
+      background = rounded(PRIMARY, 22, PRIMARY_LIGHT, 1)
+      setPadding(dp(22), dp(12), dp(22), dp(12))
+      isClickable = true
+      setOnClickListener { turnPage(1) }
+    }
+    nav.addView(nextButton, LinearLayout.LayoutParams(
+      LinearLayout.LayoutParams.WRAP_CONTENT,
+      dp(48),
+    ))
+    reader.addView(nav)
+    content.addView(reader, LinearLayout.LayoutParams(
+      LinearLayout.LayoutParams.MATCH_PARENT,
+      LinearLayout.LayoutParams.WRAP_CONTENT,
+    ).apply {
+      topMargin = dp(16)
+    })
+    readerCard = reader
 
     val homeButton = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
@@ -405,6 +584,7 @@ class BlockActivity : ComponentActivity() {
       topMargin = dp(30)
       bottomMargin = dp(18)
     })
+    this.quoteBlock = quoteBlock
 
     scroll.addView(content, FrameLayout.LayoutParams(
       FrameLayout.LayoutParams.MATCH_PARENT,

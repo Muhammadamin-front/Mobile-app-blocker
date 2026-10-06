@@ -107,6 +107,41 @@ recessive hairline grid, labels placed from a measured layout so a dense month
 never clips them, and a tap readout that supplements the axis rather than being
 the only way to read a value.
 
+## Keeping enforcement alive on aggressive phones
+
+Tested on a OnePlus 7 Pro (Android 12): recents → "Close all" killed the process,
+and Android did not rebind the accessibility service — blocked apps opened freely
+while the session still showed as active. A foreground service now runs for the
+length of each session, carrying the timer notification. After the change, "Close
+all" killed Chrome but left Qoriqchi's process and its accessibility binding intact.
+
+- `FocusSessionService` owns no logic: it shows FocusNotifier's notification and
+  stops itself the moment there is no session. On Android 14+ it is declared
+  `specialUse`, which needs a Play Console justification.
+- If Android refuses a foreground start (some background contexts on 12+), the
+  plain notification is posted instead, so the timer is never lost.
+- The app also asks — never forces — the user to exempt it from battery
+  optimisation, and on vendors known for task killers suggests locking it in
+  recents. It does not request `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, which Play
+  restricts; it opens the settings screen instead.
+
+## Reading instead of scrolling
+
+The block screen can open a book instead of the countdown: each reach for a blocked
+app becomes the next page, continuing where the last one stopped. "No book" keeps the
+timer and quote.
+
+- Bundled books are public domain — Abdulla Qodiriy's *O'tkan kunlar* and Cho'lpon's
+  *Kecha va kunduz*, both authors died in 1938 and Uzbek copyright runs for life +
+  50 years. The text comes from Wikisource via `scripts/fetch_books.py`, which strips
+  the site's navigation and keeps chapter names; Wikisource is credited in the app.
+- `BookPager` splits chapters into pages that fit one phone screen, ending on a
+  paragraph, a sentence or a word, never mid-word. It is unit tested.
+- Progress and "pages read" are stored locally. Only a page never reached before
+  counts, so paging back and forth does not inflate the total.
+- Leaving is always possible: Back and "Back to Home" work on every page. The book
+  replaces the blocked app; it does not trap the user.
+
 ## The session timer outside the app
 
 While a session runs, the remaining time sits in the status bar and on the lock
@@ -114,9 +149,7 @@ screen so the user never has to reopen Qoriqchi to check it.
 
 - The countdown is handed to the system as a chronometer, so it keeps ticking
   with the process idle and costs nothing to redraw.
-- No foreground service is involved. The accessibility service already keeps the
-  process alive, and a timer does not justify holding a service the user cannot
-  dismiss.
+- The notification is carried by the session's foreground service (see above).
 - The channel is silent by design but carries default importance, because
   Android files low-importance notifications away from the lock screen, which is
   exactly where this one is meant to be. Sound and vibration are removed instead.

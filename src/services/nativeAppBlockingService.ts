@@ -6,6 +6,7 @@ import {IconMap, withoutIcons} from '../domain/icons';
 import {
   AppSettings,
   FocusSession,
+  BookShelf,
   FocusSchedule,
   FocusTrends,
   FocusStats,
@@ -23,6 +24,7 @@ interface NativeFocusGuardModule {
   getPermissionStatus(): Promise<PermissionStatus>;
   openAccessibilitySettings(): Promise<void>;
   openUsageAccessSettings(): Promise<void>;
+  openBatterySettings(): Promise<void>;
   getScreenTime(range: TrendRange): Promise<ScreenTimeReport>;
   startBlockingSession(input: StartSessionInput): Promise<FocusSession>;
   stopBlockingSession(): Promise<FocusSession | null>;
@@ -34,6 +36,8 @@ interface NativeFocusGuardModule {
   getStatistics(): Promise<FocusStats>;
   getTrends(range: TrendRange): Promise<FocusTrends>;
   getSchedules(): Promise<FocusSchedule[]>;
+  getBooks(): Promise<BookShelf>;
+  selectBook(id: string | null): Promise<void>;
   saveSchedule(schedule: FocusSchedule): Promise<void>;
   deleteSchedule(id: string): Promise<void>;
   getSettings(): Promise<AppSettings>;
@@ -78,6 +82,7 @@ export const appBlockingService: AppBlockingService = {
   requestRequiredPermissions: () =>
     getNativeModule().openAccessibilitySettings(),
   requestUsageAccess: () => getNativeModule().openUsageAccessSettings(),
+  openBatterySettings: () => getNativeModule().openBatterySettings(),
   ensureTimerNotificationPermission,
   getScreenTime: range => getNativeModule().getScreenTime(range),
   startBlockingSession: input =>
@@ -94,6 +99,8 @@ export const appBlockingService: AppBlockingService = {
   getStatistics: () => getNativeModule().getStatistics(),
   getTrends: range => getNativeModule().getTrends(range),
   getSchedules: () => getNativeModule().getSchedules(),
+  getBooks: () => getNativeModule().getBooks(),
+  selectBook: id => getNativeModule().selectBook(id),
   saveSchedule: schedule => getNativeModule().saveSchedule(schedule),
   deleteSchedule: id => getNativeModule().deleteSchedule(id),
   getSettings: () => getNativeModule().getSettings(),

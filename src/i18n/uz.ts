@@ -80,6 +80,24 @@ export const uz: Dictionary = {
   'Turn blocking back on': 'Bloklashni qayta yoqish',
   'End focus session': 'Sessiyani tugatish',
   'Strict session': 'Qat\u2019iy sessiya',
+  'Battery optimisation': 'Batareya tejash',
+  'Read instead': 'O\u2019rniga o\u2019qing',
+  '{n} pages read': '{n} sahifa o\u2019qildi',
+  'When you open a blocked app, Qoriqchi shows the next page of this book instead.':
+    'Bloklangan ilovani ochganingizda Qoriqchi o\u2019rniga shu kitobning keyingi sahifasini ko\u2019rsatadi.',
+  'No book': 'Kitobsiz',
+  'Show the countdown and a quote instead': 'O\u2019rniga taymer va iqtibos ko\u2019rsatilsin',
+  'Public-domain texts from Wikisource. Stored on this phone; no internet needed.':
+    'Wikisource\u2019dagi jamoat mulki matnlari. Telefonda saqlanadi, internet kerak emas.',
+  'Qoriqchi is exempt, so the phone will not end a session to save power.':
+    'Qoriqchi istisno qilingan \u2014 telefon quvvat tejash uchun sessiyani to\u2019xtatmaydi.',
+  'Some phones end background apps to save power, which stops blocking mid-session. Exempt Qoriqchi to prevent it.':
+    'Ba\u2019zi telefonlar quvvat tejash uchun fondagi ilovalarni yopadi va bloklash sessiya o\u2019rtasida to\u2019xtaydi. Oldini olish uchun Qoriqchi\u2019ni istisno qiling.',
+  Exempt: 'Istisno',
+  Recommended: 'Tavsiya etiladi',
+  'On this phone, also lock Qoriqchi in recent apps (long-press its card → lock) so "Close all" leaves it running.':
+    'Bu telefonda Qoriqchi\u2019ni so\u2019nggi ilovalarda ham qulflang (kartasini bosib turing \u2192 qulflash), shunda \u201cHammasini yopish\u201d uni to\u2019xtatmaydi.',
+  'Open battery settings': 'Batareya sozlamalarini ochish',
   Schedules: 'Jadvallar',
   Schedule: 'Jadval',
   Add: 'Qo\u2019shish',

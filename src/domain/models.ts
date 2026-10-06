@@ -29,6 +29,10 @@ export interface PermissionStatus {
   accessibilityEnabled: boolean;
   /** Optional: powers the screen-time breakdown only, never blocking. */
   usageAccessEnabled: boolean;
+  /** Exempt from battery optimisation, so OEM task killers leave sessions alone. */
+  batteryUnrestricted: boolean;
+  /** Lower-cased Build.MANUFACTURER, for vendor-specific advice. */
+  manufacturer: string;
   ready: boolean;
 }
 
@@ -105,4 +109,22 @@ export interface FocusSchedule {
   durationMinutes: number;
   strict: boolean;
   enabled: boolean;
+}
+
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  year: number;
+  license: string;
+  source: string;
+  pageCount: number;
+  /** Where the reader left off, zero-based. */
+  page: number;
+}
+
+export interface BookShelf {
+  selected: string | null;
+  pagesRead: number;
+  books: Book[];
 }

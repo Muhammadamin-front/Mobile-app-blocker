@@ -20,4 +20,8 @@
     <string name="tile_subtitle_on">Fokus ketmoqda</string>
     <string name="tile_subtitle_off">Fokusni boshlash</string>
     <string name="tile_subtitle_unavailable">Avval ilova tanlang</string>
+    <string name="block_remaining_chip">Qoldi %1$s</string>
+    <string name="reader_previous">‹ Oldingi</string>
+    <string name="reader_next">Keyingi sahifa ›</string>
+    <string name="reader_finished">Tugadi</string>
 </resources>

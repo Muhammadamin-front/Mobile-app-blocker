@@ -22,7 +22,7 @@ object FocusNotifier {
   private const val TAG = "FocusGuard"
   // Channel settings belong to the user once created, so a behaviour change needs a new id.
   private const val CHANNEL_ID = "focus_timer"
-  private const val NOTIFICATION_ID = 1001
+  const val NOTIFICATION_ID = 1001
   const val ACTION_SESSION_DUE = "uz.qoriqchi.app.SESSION_DUE"
 
   /** Reposts or clears the notification to match whatever is actually stored. */
@@ -32,6 +32,7 @@ object FocusNotifier {
       val database = FocusDatabase.get(appContext)
       val session = database.getCurrentSession()
       if (session == null) {
+        FocusSessionService.stop(appContext)
         clear(appContext)
         cancelAlarm(appContext)
         return
@@ -39,11 +40,18 @@ object FocusNotifier {
       val startsIn = database.startsInMillis(session)
       val remaining = database.remainingMillis(session)
       if (remaining <= 0L) {
+        FocusSessionService.stop(appContext)
         clear(appContext)
         cancelAlarm(appContext)
         return
       }
-      show(appContext, session, startsIn, remaining)
+      // The foreground service carries the notification and, with it, keeps the
+      // process alive — the accessibility service lives in the same process, and
+      // on OEMs like OnePlus "close all" otherwise kills it for the rest of the
+      // session. If Android refuses the service, the plain notification still shows.
+      if (!FocusSessionService.start(appContext)) {
+        post(appContext, build(appContext, session, startsIn, remaining))
+      }
       scheduleAlarm(appContext, if (startsIn > 0L) startsIn else remaining)
     } catch (error: Throwable) {
       Log.w(TAG, "Could not update the session notification.", error)
@@ -54,23 +62,43 @@ object FocusNotifier {
     manager(context)?.cancel(NOTIFICATION_ID)
   }
 
-  private fun show(
+  /** The notification for whatever session is stored now, or null when there is none. */
+  fun current(context: Context): Notification? {
+    val database = FocusDatabase.get(context.applicationContext)
+    val session = database.getCurrentSession() ?: return null
+    val remaining = database.remainingMillis(session)
+    if (remaining <= 0L) {
+      return null
+    }
+    return build(context, session, database.startsInMillis(session), remaining)
+  }
+
+  private fun post(context: Context, notification: Notification) {
+    try {
+      manager(context)?.notify(NOTIFICATION_ID, notification)
+    } catch (error: SecurityException) {
+      // The user has not granted notifications. Blocking is unaffected.
+      Log.i(TAG, "Notifications are not permitted; the session runs without one.")
+    }
+  }
+
+  private fun build(
     context: Context,
     session: StoredSession,
     startsInMillis: Long,
     remainingMillis: Long,
-  ) {
-    val manager = manager(context) ?: return
-    ensureChannel(manager, context)
+  ): Notification {
+    manager(context)?.let { ensureChannel(it, context) }
+    val strings = AppLocale.wrap(context)
 
     val scheduled = startsInMillis > 0L
     val count = session.blockedApps.size
     val subtitle = if (scheduled) {
-      context.getString(R.string.notification_starts_soon)
+      strings.getString(R.string.notification_starts_soon)
     } else if (count == 1) {
-      context.getString(R.string.notification_blocked_apps, count)
+      strings.getString(R.string.notification_blocked_apps, count)
     } else {
-      context.getString(R.string.notification_blocked_apps_plural, count)
+      strings.getString(R.string.notification_blocked_apps_plural, count)
     }
 
     val content = Intent(context, MainActivity::class.java).apply {
@@ -93,7 +121,7 @@ object FocusNotifier {
     builder
       .setSmallIcon(R.drawable.ic_notification)
       .setContentTitle(
-        context.getString(
+        strings.getString(
           if (scheduled) R.string.notification_scheduled_title else R.string.notification_title,
         ),
       )
@@ -114,12 +142,7 @@ object FocusNotifier {
       builder.setCategory(Notification.CATEGORY_STOPWATCH)
     }
 
-    try {
-      manager.notify(NOTIFICATION_ID, builder.build())
-    } catch (error: SecurityException) {
-      // The user has not granted notifications. Blocking is unaffected.
-      Log.i(TAG, "Notifications are not permitted; the session runs without one.")
-    }
+    return builder.build()
   }
 
   private fun ensureChannel(manager: NotificationManager, context: Context) {

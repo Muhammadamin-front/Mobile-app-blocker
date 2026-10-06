@@ -20,6 +20,7 @@ import {
 import {
   AppSettings,
   FocusSession,
+  BookShelf,
   FocusSchedule,
   FocusTrends,
   FocusStats,
@@ -67,6 +68,8 @@ interface AppStoreValue {
   stats: FocusStats;
   trends: FocusTrends;
   schedules: FocusSchedule[];
+  shelf: BookShelf;
+  selectBook(id: string | null): Promise<void>;
   screenTime: ScreenTimeReport;
   trendRange: TrendRange;
   trendsLoading: boolean;
@@ -86,6 +89,7 @@ interface AppStoreValue {
   stopSession(): Promise<void>;
   openPermissionSettings(): Promise<void>;
   openUsageAccessSettings(): Promise<void>;
+  openBatterySettings(): Promise<void>;
   completeOnboarding(): Promise<void>;
   setTheme(theme: ThemePreference): Promise<void>;
   resetAllData(): Promise<void>;
@@ -106,11 +110,14 @@ export function AppStoreProvider({children}: PropsWithChildren) {
   const [trends, setTrends] = useState<FocusTrends>(emptyTrends);
   const [screenTime, setScreenTime] = useState<ScreenTimeReport>(emptyScreenTime);
   const [schedules, setSchedules] = useState<FocusSchedule[]>([]);
+  const [shelf, setShelf] = useState<BookShelf>({selected: null, pagesRead: 0, books: []});
   const [trendRange, setTrendRange] = useState<TrendRange>('week');
   const [trendsLoading, setTrendsLoading] = useState(true);
   const [permission, setPermission] = useState<PermissionStatus>({
     accessibilityEnabled: false,
     usageAccessEnabled: false,
+    batteryUnrestricted: false,
+    manufacturer: '',
     ready: false,
   });
   const [settings, setSettings] = useState<AppSettings>({
@@ -160,6 +167,7 @@ export function AppStoreProvider({children}: PropsWithChildren) {
           appBlockingService.getBlockedApps(),
           appBlockingService.getSchedules(),
         ]);
+      appBlockingService.getBooks().then(setShelf).catch(() => undefined);
       setPermission(nextPermission);
       setActiveSession(session);
       setHistory(nextHistory);
@@ -328,6 +336,10 @@ export function AppStoreProvider({children}: PropsWithChildren) {
     await run(() => appBlockingService.requestUsageAccess());
   }, [run]);
 
+  const openBatterySettings = useCallback(async () => {
+    await run(() => appBlockingService.openBatterySettings());
+  }, [run]);
+
   const completeOnboarding = useCallback(async () => {
     await run(async () => {
       await appBlockingService.completeOnboarding();
@@ -358,6 +370,17 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       await run(async () => {
         await appBlockingService.deleteSchedule(id);
         setSchedules(await appBlockingService.getSchedules());
+      });
+    },
+    [run],
+  );
+
+  const selectBook = useCallback(
+    async (id: string | null) => {
+      setShelf(current => ({...current, selected: id}));
+      await run(async () => {
+        await appBlockingService.selectBook(id);
+        setShelf(await appBlockingService.getBooks());
       });
     },
     [run],
@@ -421,6 +444,8 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       stats,
       trends,
       schedules,
+      shelf,
+      selectBook,
       screenTime,
       trendRange,
       trendsLoading,
@@ -440,6 +465,7 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       stopSession,
       openPermissionSettings,
       openUsageAccessSettings,
+      openBatterySettings,
       completeOnboarding,
       setTheme,
       resetAllData,
@@ -457,12 +483,15 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       loading,
       openPermissionSettings,
       openUsageAccessSettings,
+      openBatterySettings,
       permission,
       refresh,
       deleteSchedule,
       resetAllData,
       saveSchedule,
       schedules,
+      selectBook,
+      shelf,
       screenTime,
       setLanguage,
       settings,

@@ -473,6 +473,33 @@ class FocusDatabase private constructor(context: Context) :
     writableDatabase.delete("schedules", "id = ?", arrayOf(id))
   }
 
+  /** The book the block screen opens, or null for the timer and quote instead. */
+  @Synchronized
+  fun getSelectedBook(): String? = getSetting(SELECTED_BOOK)?.takeIf { it.isNotBlank() }
+
+  @Synchronized
+  fun setSelectedBook(id: String?) = setSetting(SELECTED_BOOK, id.orEmpty())
+
+  /** Where the reader left off, so each block screen continues the same book. */
+  @Synchronized
+  fun getBookPage(id: String): Int = getSetting(BOOK_PAGE_PREFIX + id)?.toIntOrNull() ?: 0
+
+  @Synchronized
+  fun setBookPage(id: String, page: Int) = setSetting(BOOK_PAGE_PREFIX + id, page.coerceAtLeast(0).toString())
+
+  @Synchronized
+  fun getBookFurthest(id: String): Int = getSetting(BOOK_FURTHEST_PREFIX + id)?.toIntOrNull() ?: 0
+
+  @Synchronized
+  fun setBookFurthest(id: String, page: Int) = setSetting(BOOK_FURTHEST_PREFIX + id, page.toString())
+
+  @Synchronized
+  fun getPagesRead(): Int = getSetting(PAGES_READ)?.toIntOrNull() ?: 0
+
+  /** Counts a page turned forward for the first time, not one paged back over. */
+  @Synchronized
+  fun recordPageRead() = setSetting(PAGES_READ, (getPagesRead() + 1).toString())
+
   @Synchronized
   fun setSelectedApps(apps: List<StoredApp>) =
     setSetting(SELECTED_APPS, appsToJson(apps.map { it.copy(iconBase64 = null) }))
@@ -538,6 +565,10 @@ class FocusDatabase private constructor(context: Context) :
     const val THEME_PREFERENCE = "theme_preference"
     const val LANGUAGE_PREFERENCE = "language_preference"
     const val TILE_DURATION_MINUTES = "tile_duration_minutes"
+    const val SELECTED_BOOK = "selected_book"
+    const val PAGES_READ = "pages_read_total"
+    private const val BOOK_PAGE_PREFIX = "book_page_"
+    private const val BOOK_FURTHEST_PREFIX = "book_far_"
 
     @Volatile private var instance: FocusDatabase? = null
 

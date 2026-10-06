@@ -3,6 +3,7 @@ import {IconMap} from '../domain/icons';
 import {
   AppSettings,
   FocusSession,
+  BookShelf,
   FocusSchedule,
   FocusTrends,
   FocusStats,
@@ -19,6 +20,7 @@ export interface AppBlockingService {
   getPermissionStatus(): Promise<PermissionStatus>;
   requestRequiredPermissions(): Promise<void>;
   requestUsageAccess(): Promise<void>;
+  openBatterySettings(): Promise<void>;
   /**
    * Asks for permission to show the session timer. Denial is not fatal: the session
    * runs either way, it simply has no notification.
@@ -35,6 +37,8 @@ export interface AppBlockingService {
   getStatistics(): Promise<FocusStats>;
   getTrends(range: TrendRange): Promise<FocusTrends>;
   getSchedules(): Promise<FocusSchedule[]>;
+  getBooks(): Promise<BookShelf>;
+  selectBook(id: string | null): Promise<void>;
   saveSchedule(schedule: FocusSchedule): Promise<void>;
   deleteSchedule(id: string): Promise<void>;
   getSettings(): Promise<AppSettings>;

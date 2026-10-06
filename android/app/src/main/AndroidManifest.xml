@@ -4,6 +4,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Only used for the ongoing session timer; denying it changes nothing else. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Keeps the process — and the accessibility service inside it — alive for the
+         length of a session. Without it some OEM task killers end enforcement. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Optional and off by default. Blocking never needs it; it only powers the
          screen-time breakdown, and the user grants it in Android Settings. -->
     <uses-permission
@@ -67,6 +71,14 @@
         android:enabled="false"
         android:exported="false">
         <meta-data android:name="autoStoreLocales" android:value="true" />
+      </service>
+      <service
+        android:name=".FocusSessionService"
+        android:exported="false"
+        android:foregroundServiceType="specialUse">
+        <property
+          android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+          android:value="Keeps a user-started focus session enforced and its countdown visible until the session ends." />
       </service>
       <service
         android:name=".FocusTileService"

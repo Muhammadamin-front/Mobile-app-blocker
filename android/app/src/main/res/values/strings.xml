@@ -23,4 +23,10 @@
     <string name="tile_subtitle_on">Focus running</string>
     <string name="tile_subtitle_off">Start focus</string>
     <string name="tile_subtitle_unavailable">Pick apps first</string>
+    <string name="block_remaining_chip">Remaining %1$s</string>
+    <string name="reader_meta" translatable="false">%1$s · %2$s</string>
+    <string name="reader_counter" translatable="false">%1$d / %2$d</string>
+    <string name="reader_previous">‹ Previous</string>
+    <string name="reader_next">Next page ›</string>
+    <string name="reader_finished">The end</string>
 </resources>

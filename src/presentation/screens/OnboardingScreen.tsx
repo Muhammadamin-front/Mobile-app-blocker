@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
+import {BatteryCard} from '../BatteryCard';
 import {useAppStore} from '../../state/AppStore';
 import {radii, spacing, Theme} from '../../theme/theme';
 import {BrandMark, Card, PrimaryButton, StatusBadge} from '../components';
@@ -150,6 +151,7 @@ export function OnboardingScreen({theme}: {theme: Theme}) {
         )}
 
         <View style={styles.buttonSpacer} />
+        {permission.accessibilityEnabled ? <BatteryCard theme={theme} /> : null}
         <PrimaryButton
           label={t('Enter Qoriqchi')}
           onPress={finish}

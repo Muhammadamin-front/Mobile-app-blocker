@@ -5,6 +5,7 @@ import {ThemePreference} from '../../domain/models';
 import {LANGUAGE_OPTIONS} from '../../i18n';
 import {useAppStore} from '../../state/AppStore';
 import {radii, spacing, Theme} from '../../theme/theme';
+import {BatteryCard} from '../BatteryCard';
 import {BrandMark, Card, PrimaryButton, ScreenHeader, SectionTitle, StatusBadge} from '../components';
 
 const themeOptions: Array<{value: ThemePreference; label: string; glyph: string}> = [
@@ -116,6 +117,8 @@ export function SettingsScreen({theme}: {theme: Theme}) {
           variant="secondary"
         />
       </Card>
+
+      <BatteryCard theme={theme} />
 
       <SectionTitle theme={theme}>{t('Appearance')}</SectionTitle>
       <Card theme={theme} style={styles.appearanceCard}>
