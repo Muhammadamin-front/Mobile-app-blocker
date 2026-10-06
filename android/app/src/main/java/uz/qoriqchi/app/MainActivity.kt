@@ -1,4 +1,4 @@
-package com.focusguard
+package uz.qoriqchi.app
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

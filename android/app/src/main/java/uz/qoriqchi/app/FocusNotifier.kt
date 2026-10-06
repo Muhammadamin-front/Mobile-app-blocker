@@ -1,4 +1,4 @@
-package com.focusguard
+package uz.qoriqchi.app
 
 import android.app.AlarmManager
 import android.app.Notification
@@ -23,7 +23,7 @@ object FocusNotifier {
   // Channel settings belong to the user once created, so a behaviour change needs a new id.
   private const val CHANNEL_ID = "focus_timer"
   private const val NOTIFICATION_ID = 1001
-  const val ACTION_SESSION_DUE = "com.focusguard.SESSION_DUE"
+  const val ACTION_SESSION_DUE = "uz.qoriqchi.app.SESSION_DUE"
 
   /** Reposts or clears the notification to match whatever is actually stored. */
   fun sync(context: Context) {

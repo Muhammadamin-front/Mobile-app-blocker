@@ -1,9 +1,10 @@
-package com.focusguard
+package uz.qoriqchi.app
 
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
 import java.util.UUID
 
@@ -15,11 +16,18 @@ import java.util.UUID
  */
 object FocusScheduler {
   private const val TAG = "FocusGuard"
-  const val ACTION_SCHEDULE_DUE = "com.focusguard.SCHEDULE_DUE"
+  const val ACTION_SCHEDULE_DUE = "uz.qoriqchi.app.SCHEDULE_DUE"
   private const val REQUEST_CODE = 2001
 
-  /** How late an alarm may arrive and still count as "this is the one that fired". */
-  private const val DUE_WINDOW_MILLIS = 5 * 60_000L
+  /**
+   * How late an alarm may arrive and still start its session. Generous, because an
+   * inexact alarm in Doze can be deferred by several minutes and a focus block that
+   * begins late is far better than one that silently never begins.
+   */
+  private const val LATE_TOLERANCE_MILLIS = 20 * 60_000L
+
+  /** Below this, what is left of the block is not worth interrupting anything for. */
+  private const val MIN_REMAINDER_MILLIS = 60_000L
 
   /** Re-arms the alarm for whichever enabled schedule comes next. */
   fun sync(context: Context) {
@@ -36,7 +44,14 @@ object FocusScheduler {
         alarms.cancel(pending)
         return
       }
-      alarms.set(AlarmManager.RTC_WAKEUP, next, pending)
+      // Exact where the app is allowed it, otherwise the Doze-aware inexact form —
+      // which still fires during a maintenance window instead of being held until
+      // the phone wakes up. Neither asks the user for a permission.
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarms.canScheduleExactAlarms()) {
+        alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pending)
+      } else {
+        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pending)
+      }
     } catch (error: Throwable) {
       Log.w(TAG, "Could not arm the schedule alarm.", error)
     }
@@ -51,18 +66,21 @@ object FocusScheduler {
     try {
       val database = FocusDatabase.get(appContext)
       val now = System.currentTimeMillis()
+      // If several are due, the most recent one wins: an older missed block has
+      // less of itself left, and starting two at once is not a thing.
       val due = database.getSchedules()
         .filter { it.enabled }
-        .firstOrNull { schedule ->
-          val occurrence = ScheduleMath.nextOccurrence(
-            now - DUE_WINDOW_MILLIS,
+        .mapNotNull { schedule ->
+          ScheduleMath.occurrenceIfDue(
+            now,
             schedule.days,
             schedule.startMinute,
-          )
-          occurrence != null && occurrence <= now
+            LATE_TOLERANCE_MILLIS,
+          )?.let { schedule to it }
         }
+        .maxByOrNull { it.second }
       if (due != null && database.getCurrentSession() == null) {
-        start(database, due, now)
+        start(database, due.first, due.second, now)
       }
     } catch (error: Throwable) {
       Log.w(TAG, "Could not start the scheduled session.", error)
@@ -73,16 +91,28 @@ object FocusScheduler {
     }
   }
 
-  private fun start(database: FocusDatabase, schedule: StoredSchedule, now: Long) {
+  private fun start(
+    database: FocusDatabase,
+    schedule: StoredSchedule,
+    dueAt: Long,
+    now: Long,
+  ) {
     val apps = database.getSelectedApps()
     if (apps.isEmpty()) {
       Log.i(TAG, "Schedule ${schedule.id} had nothing to block.")
       return
     }
+    // The block keeps the end its owner chose. A 9-to-10 block that starts at 9:06
+    // still ends at 10:00 rather than running to 10:06.
+    val end = dueAt + schedule.durationMinutes * 60_000L
+    if (end - now < MIN_REMAINDER_MILLIS) {
+      Log.i(TAG, "Schedule ${schedule.id} fired too late to be worth starting.")
+      return
+    }
     database.startSession(
       id = "schedule-" + UUID.randomUUID(),
-      startTimestamp = now,
-      endTimestamp = now + schedule.durationMinutes * 60_000L,
+      startTimestamp = minOf(dueAt, now),
+      endTimestamp = end,
       blockedApps = apps,
       strict = schedule.strict,
     )

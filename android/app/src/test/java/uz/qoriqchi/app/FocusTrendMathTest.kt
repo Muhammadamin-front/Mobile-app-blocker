@@ -1,4 +1,4 @@
-package com.focusguard
+package uz.qoriqchi.app
 
 import java.util.Calendar
 import java.util.TimeZone

@@ -6,4 +6,4 @@
     android:description="@string/accessibility_service_description"
     android:isAccessibilityTool="false"
     android:notificationTimeout="50"
-    android:settingsActivity="com.focusguard.MainActivity" />
+    android:settingsActivity="uz.qoriqchi.app.MainActivity" />

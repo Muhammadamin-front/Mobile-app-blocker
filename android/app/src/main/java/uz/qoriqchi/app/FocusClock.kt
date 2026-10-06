@@ -1,4 +1,4 @@
-package com.focusguard
+package uz.qoriqchi.app
 
 object FocusClock {
   fun isSameBoot(sessionBootCount: Int, currentBootCount: Int): Boolean =

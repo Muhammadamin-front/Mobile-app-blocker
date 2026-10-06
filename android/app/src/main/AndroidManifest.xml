@@ -87,8 +87,8 @@
           <action android:name="android.intent.action.TIME_SET" />
           <action android:name="android.intent.action.TIMEZONE_CHANGED" />
           <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-          <action android:name="com.focusguard.SESSION_DUE" />
-          <action android:name="com.focusguard.SCHEDULE_DUE" />
+          <action android:name="uz.qoriqchi.app.SESSION_DUE" />
+          <action android:name="uz.qoriqchi.app.SCHEDULE_DUE" />
         </intent-filter>
       </receiver>
     </application>

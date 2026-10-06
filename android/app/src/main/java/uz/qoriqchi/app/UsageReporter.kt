@@ -1,4 +1,4 @@
-package com.focusguard
+package uz.qoriqchi.app
 
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager

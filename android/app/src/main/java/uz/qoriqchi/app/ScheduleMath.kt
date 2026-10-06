@@ -1,4 +1,4 @@
-package com.focusguard
+package uz.qoriqchi.app
 
 import java.util.Calendar
 import java.util.TimeZone
@@ -58,4 +58,24 @@ object ScheduleMath {
   /** The soonest start across several schedules, ignoring the ones that never fire. */
   fun earliest(occurrences: List<Long?>): Long? =
     occurrences.filterNotNull().minOrNull()
+
+  /**
+   * When this schedule was supposed to start, if that moment has just passed.
+   *
+   * An alarm can arrive late — Doze defers it, the phone was off — and a schedule
+   * that is dropped for being a few minutes late is worse than one that starts a few
+   * minutes late. Returns the moment it was due so the session can keep its original
+   * end time rather than sliding the whole block forward.
+   */
+  fun occurrenceIfDue(
+    nowMillis: Long,
+    days: Int,
+    startMinute: Int,
+    toleranceMillis: Long,
+    zone: TimeZone = TimeZone.getDefault(),
+  ): Long? {
+    val occurrence = nextOccurrence(nowMillis - toleranceMillis, days, startMinute, zone)
+      ?: return null
+    return if (occurrence <= nowMillis) occurrence else null
+  }
 }

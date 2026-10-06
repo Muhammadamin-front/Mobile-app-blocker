@@ -1,4 +1,4 @@
-package com.focusguard
+package uz.qoriqchi.app
 
 import android.content.ContentValues
 import android.content.Context
@@ -543,6 +543,22 @@ class FocusDatabase private constructor(context: Context) :
 
     fun get(context: Context): FocusDatabase = instance ?: synchronized(this) {
       instance ?: FocusDatabase(context).also { instance = it }
+    }
+
+    /** The database file a migration test has to lay down by hand before opening it. */
+    @JvmStatic
+    val fileName: String get() = DATABASE_NAME
+
+    /**
+     * Drops the cached instance so a test can open the same file again from scratch.
+     * Nothing in the app calls this: one process keeps one connection for its life.
+     */
+    @JvmStatic
+    fun resetForTests() {
+      synchronized(this) {
+        instance?.close()
+        instance = null
+      }
     }
 
     private fun appsToJson(apps: List<StoredApp>): String = JSONArray().apply {

@@ -1,4 +1,4 @@
-package com.focusguard
+package uz.qoriqchi.app
 
 import android.content.BroadcastReceiver
 import android.content.Context

@@ -10,5 +10,5 @@
 # Add any project specific keep options here:
 # FocusGuard is registered manually as a React Native package and its bridge
 # methods are invoked from JavaScript.
--keep class com.focusguard.FocusGuardModule { *; }
--keep class com.focusguard.FocusGuardPackage { *; }
+-keep class uz.qoriqchi.app.FocusGuardModule { *; }
+-keep class uz.qoriqchi.app.FocusGuardPackage { *; }

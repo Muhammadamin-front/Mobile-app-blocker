@@ -1,4 +1,4 @@
-package com.focusguard
+package uz.qoriqchi.app
 
 import android.graphics.drawable.Icon
 import android.os.Build

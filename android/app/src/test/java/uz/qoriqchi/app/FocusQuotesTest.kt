@@ -1,4 +1,4 @@
-package com.focusguard
+package uz.qoriqchi.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
