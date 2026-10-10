@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only the weekly share card is ever exposed, and only to the app the person picks. -->
+<paths>
+    <cache-path name="share" path="share/" />
+</paths>

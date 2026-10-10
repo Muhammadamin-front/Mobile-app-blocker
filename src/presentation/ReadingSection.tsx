@@ -5,25 +5,58 @@ import {useAppStore} from '../state/AppStore';
 import {radii, spacing, Theme} from '../theme/theme';
 import {Card, SectionTitle} from './components';
 
+interface Option {
+  key: string;
+  title: string;
+  detail: string;
+  progress?: number;
+  active: boolean;
+  choose(): void;
+}
+
 /**
- * Picks the book the block screen opens. Every reach for a blocked app becomes a
- * page of it, continuing where the last one stopped. "No book" keeps the countdown.
+ * Picks what the block screen shows: five English words to recall, the next page of a
+ * book, or the countdown. Every reach for a blocked app becomes a little study instead.
  */
 export function ReadingSection({theme}: {theme: Theme}) {
-  const {shelf, selectBook, t} = useAppStore();
+  const {shelf, selectBook, selectWords, t} = useAppStore();
 
-  if (!shelf.books.length) {
+  if (!shelf.books.length && !shelf.words.deckSize) {
     return null;
   }
 
-  const options: Array<{id: string | null; title: string; detail: string; progress?: number}> = [
+  const options: Option[] = [
+    ...(shelf.words.deckSize
+      ? [
+          {
+            key: 'words',
+            title: t('English words · B1–B2'),
+            detail: t('{seen} of {total} seen · {learned} learned', {
+              seen: shelf.words.seen,
+              total: shelf.words.deckSize,
+              learned: shelf.words.learned,
+            }),
+            progress: shelf.words.learned / shelf.words.deckSize,
+            active: shelf.material === 'words',
+            choose: () => selectWords(),
+          },
+        ]
+      : []),
     ...shelf.books.map(book => ({
-      id: book.id as string | null,
+      key: book.id,
       title: book.title,
-      detail: `${book.author} · ${book.year}`,
+      detail: book.year ? `${book.author} · ${book.year}` : book.author,
       progress: book.pageCount ? (book.page + 1) / book.pageCount : 0,
+      active: shelf.material === 'book' && shelf.selected === book.id,
+      choose: () => selectBook(book.id),
     })),
-    {id: null, title: t('No book'), detail: t('Show the countdown and a quote instead')},
+    {
+      key: 'none',
+      title: t('No book'),
+      detail: t('Show the countdown and a quote instead'),
+      active: shelf.material === 'timer',
+      choose: () => selectBook(null),
+    },
   ];
 
   return (
@@ -35,16 +68,16 @@ export function ReadingSection({theme}: {theme: Theme}) {
       </SectionTitle>
       <Card theme={theme} style={styles.card}>
         <Text style={[styles.lead, {color: theme.textMuted}]}>
-          {t('When you open a blocked app, Qoriqchi shows the next page of this book instead.')}
+          {t('When you open a blocked app, Qoriqchi shows this instead.')}
         </Text>
         {options.map(option => {
-          const active = shelf.selected === option.id;
+          const active = option.active;
           return (
             <Pressable
-              key={option.id ?? 'none'}
+              key={option.key}
               accessibilityRole="radio"
               accessibilityState={{checked: active}}
-              onPress={() => selectBook(option.id)}
+              onPress={option.choose}
               style={[
                 styles.option,
                 {
@@ -55,7 +88,7 @@ export function ReadingSection({theme}: {theme: Theme}) {
               <View style={styles.optionCopy}>
                 <Text style={[styles.optionTitle, {color: theme.text}]}>{option.title}</Text>
                 <Text style={[styles.optionDetail, {color: theme.textMuted}]}>{option.detail}</Text>
-                {option.progress !== undefined && option.progress > 0 && option.id !== null ? (
+                {option.progress !== undefined && option.progress > 0 ? (
                   <View style={[styles.track, {backgroundColor: theme.surface}]}>
                     <View
                       style={[
@@ -73,7 +106,7 @@ export function ReadingSection({theme}: {theme: Theme}) {
           );
         })}
         <Text style={[styles.credit, {color: theme.textMuted}]}>
-          {t('Public-domain texts from Wikisource. Stored on this phone; no internet needed.')}
+          {t('Books: public-domain texts from Wikisource. Words: New General Service List (CC BY-SA 4.0). Everything is stored on this phone.')}
         </Text>
       </Card>
     </View>

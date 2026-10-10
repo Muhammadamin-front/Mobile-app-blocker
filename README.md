@@ -1,13 +1,13 @@
 # Qoriqchi
 
-Qoriqchi (formerly Qoriqchi) is an Android-first, completely offline React Native focus app. Users choose launchable apps, schedule a focus session, and receive a native blocking screen when a selected app is opened. No account, backend, analytics SDK, or network service is used.
+Qoriqchi is an Android-first, offline React Native focus app. Users choose launchable apps, schedule a focus session, and receive a native blocking screen when a selected app is opened. No account, backend, analytics SDK, or network service of its own is used; the one networked component is Google Play Billing, for the Pro purchase.
 
 ## Status and supported platform
 
 - React Native 0.87.1 / React 19.2 / TypeScript
 - Kotlin 2.2 / minimum Android API 24 / target API 36 / compile API 37
 - Android MVP implemented; iOS is intentionally not implemented
-- Debug builds use `INTERNET` only for Metro. The release manifest has no internet permission.
+- Qoriqchi's own code makes no network calls. The release manifest does carry `INTERNET` and `ACCESS_NETWORK_STATE`, merged in by Google's `datatransport` component, which Play Billing 8 uses for its own logging; debug builds also use them for Metro.
 
 ## Architecture
 
@@ -65,9 +65,13 @@ Release permissions are deliberately minimal:
 
 - `BIND_ACCESSIBILITY_SERVICE` is a system-only binding permission on the declared service. The user explicitly enables the service in Android Settings after a standalone in-app disclosure and affirmative consent.
 - `RECEIVE_BOOT_COMPLETED` lets the app normalize persisted session state after reboot.
-- A scoped `<queries>` declaration discovers only activities matching `ACTION_MAIN` + `CATEGORY_LAUNCHER`.
+- `POST_NOTIFICATIONS` shows the session countdown; it is asked for when a session starts, and refusing it changes nothing else.
+- `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_SPECIAL_USE` keep the process — and the accessibility service in it — alive for the length of a session.
+- `PACKAGE_USAGE_STATS` is optional and off by default; it powers only the screen-time breakdown, and the user grants it in Android Settings.
+- `com.android.vending.BILLING` comes with Play Billing, for the one Pro purchase, and so do `INTERNET` and `ACCESS_NETWORK_STATE`: Play Billing 8 depends on Google's `datatransport` logging component, which declares them. Qoriqchi's own code opens no connection. Declare Play Billing in the Data safety form as Google's SDK requires.
+- A scoped `<queries>` declaration discovers only activities matching `ACTION_MAIN` + `CATEGORY_LAUNCHER`, plus the Telegram packages, so the weekly card can be sent straight there.
 
-Not requested: `QUERY_ALL_PACKAGES`, Usage Access, overlay, notification, exact-alarm, device-admin, VPN, storage, location, contacts, or root. The app, current launcher, default dialer, Settings, System UI, package installer, and permission controller are excluded from selection.
+Not requested: `QUERY_ALL_PACKAGES`, overlay, exact-alarm, device-admin, VPN, storage, location, contacts, or root. The app, current launcher, default dialer, Settings, System UI, package installer, and permission controller are excluded from selection.
 
 ## Google Play review checklist
 
@@ -127,14 +131,25 @@ all" killed Chrome but left Qoriqchi's process and its accessibility binding int
 
 ## Reading instead of scrolling
 
-The block screen can open a book instead of the countdown: each reach for a blocked
-app becomes the next page, continuing where the last one stopped. "No book" keeps the
-timer and quote.
+The block screen can show English words or a book instead of the countdown: each
+reach for a blocked app becomes a little study. "No book" keeps the timer and quote.
 
-- Bundled books are public domain — Abdulla Qodiriy's *O'tkan kunlar* and Cho'lpon's
-  *Kecha va kunduz*, both authors died in 1938 and Uzbek copyright runs for life +
-  50 years. The text comes from Wikisource via `scripts/fetch_books.py`, which strips
-  the site's navigation and keeps chapter names; Wikisource is credited in the app.
+- **English words.** Five cards per visit from a deck of 994 words — NGSL 1.2 ranks
+  1001–2000, the B1–B2 band IELTS and CEFR preparation lives in. A card shows the
+  word and a plain-English definition; the Uzbek meaning appears only when asked for,
+  so each card is recall, not reading. "I know it" moves the word up a Leitner box
+  (back in 1, 3, 7, 16, 35, then 90 days); "Show again" brings it back in ten
+  minutes. `WordScheduler` is unit tested. The deck is built by
+  `scripts/build_words.py` from the NGSL (CC BY-SA 4.0) and the Uzbek glosses in
+  `scripts/words/uz_glosses.tsv`, written for this app and shared under the same
+  license. A handful of words unsuited to a student audience were left out.
+- **Books.** All public domain under Uzbek law (life + 50 years): Abdulla Qodiriy's
+  *O'tkan kunlar*, Cho'lpon's *Kecha va kunduz*, Abdulla Avloniy's *Turkiy Guliston
+  yoxud axloq*, and *Jadid she'riyati*, poems by Cho'lpon, Fitrat, Avloniy, Hamza and
+  Qodiriy (all died by 1938). The text comes from Wikisource via
+  `scripts/fetch_books.py` (`--skip-novels` refreshes only the shorter works), which
+  strips the site's navigation and licence box, keeps chapter names, and keeps the
+  line breaks of verse; Wikisource is credited in the app.
 - `BookPager` splits chapters into pages that fit one phone screen, ending on a
   paragraph, a sentence or a word, never mid-word. It is unit tested.
 - Progress and "pages read" are stored locally. Only a page never reached before
@@ -180,7 +195,52 @@ not disabled — it is not there, replaced by a card that says why.
 - It is confirmed before it starts, because it is the one choice on that screen that
   cannot be taken back.
 - It never obstructs Android itself. Disabling the accessibility service or
-  uninstalling the app still works, and the onboarding says so.
+  uninstalling the app still works, and the onboarding says so. Using Accessibility
+  to stop that would also break Play policy for anything that is not a parental
+  control.
+- It is the paid feature, Qoriqchi Pro: one non-consumable in-app product,
+  `qoriqchi_pro`, bought through Play Billing 8. The entitlement is cached in the
+  local database, so strict sessions keep working offline; the session code asks
+  `ProStore`, never Play. Every refresh writes Play's answer first, which is how a
+  refund takes Pro away again. The rule is enforced natively too — starting a strict
+  session or saving a strict schedule without Pro is refused below the UI, and a
+  strict schedule saved under Pro runs as an ordinary one after a refund. Debug
+  builds simulate the purchase, because there is no Play listing to buy from.
+  Before release, create `qoriqchi_pro` in Play Console → Monetize → In-app products.
+
+## Streaks and honest accounting
+
+Strictness here is accountability, not a trap. A day counts toward the streak when a
+session of at least 15 minutes ran to its end with protection on the whole time.
+
+- `SessionIntegrity` reads the user's Accessibility setting — not whether the service
+  is bound at that instant, so a reboot or an OEM killing the process is never
+  mistaken for switching protection off. The foreground service watches the setting
+  while a session runs, and the app's eight-second permission poll is a second check.
+- When protection is found off, the session is marked broken (`broken_at`, the first
+  moment only). It keeps blocking if protection comes back, but it no longer counts,
+  and a broken session resets the day's streak even if another session that day
+  finished cleanly. The notification and the active screen say so; the history shows
+  the session as broken.
+- `StreakMath` is unit tested, including local-midnight day boundaries.
+
+## Exam countdown
+
+A student sets the exam they are counting down to — DTM, final exams (attestatsiya),
+IELTS, CEFR or their own — and the date, through Android's own date picker. The
+block screen then says "DTMgacha 87 kun qoldi" right under the blocked app's name:
+the number is the argument for closing it. Home shows the same countdown; schedules
+offer one-tap study blocks (lessons Mon–Sat 8:00, homework daily 19:00, exam prep
+Mon–Sat 16:00), each editable after.
+
+## Sharing a week
+
+The History screen draws a 1080×1350 card — focus time over the last 7 days, the
+streak, pages read and words reviewed, the exam countdown — natively in `ShareCard`
+and hands it to Android's share sheet, straight to Telegram when it is installed.
+It needs no internet permission: the picture goes only where the person sends it,
+through a `FileProvider` that exposes nothing but that one cached file. The caption
+carries the Play link only once the app was installed from Play.
 
 ## Quick Settings tile
 
@@ -339,7 +399,16 @@ Run on at least one AOSP/Pixel device and representative Samsung/Xiaomi devices 
 - [ ] Upgrade over an older install and confirm the `ended_at` migration keeps existing history readable.
 - [ ] Leave usage access off and confirm Progress shows the explanation, never an empty breakdown, and that blocking is unaffected.
 - [ ] Grant usage access, confirm the per-app breakdown appears and follows the selected range, then revoke it and confirm the section returns to the explanation.
-- [ ] Inspect the release manifest and confirm it has no `INTERNET` or `QUERY_ALL_PACKAGES` permission.
+- [ ] Without Pro, tap Strict session on Home and in a schedule: the Pro sheet opens, a sideloaded build explains that Pro is sold only in the Play version, and the native layer refuses a strict start or a strict schedule.
+- [ ] From an internal-testing install, buy `qoriqchi_pro` with a licence tester, confirm strict unlocks, then refund it in Play Console and confirm the next launch locks strict again.
+- [ ] During a session, turn Accessibility off in Settings: within a few seconds the notification says the session will not count, Home shows "This session is broken", and History marks it; turning protection back on resumes blocking.
+- [ ] Finish a 15-minute session and confirm the streak shows 1 and "today counts"; break the next one and confirm the streak returns to 0.
+- [ ] Set an exam date with the date picker; confirm Home and the block screen show the days left, the day before says "tomorrow", and a passed exam disappears from the block screen.
+- [ ] Tap each study preset once; it appears as a schedule and is not offered again.
+- [ ] Choose English words, open a blocked app, reveal and answer five cards, then "5 more words"; a word marked "Show again" returns within ten minutes.
+- [ ] Choose *Jadid she'riyati* and confirm poems keep their line breaks and stanzas on the block screen.
+- [ ] Share from History: the card shows this week's numbers in the app's language; with Telegram installed, "Share on Telegram" opens it directly.
+- [ ] Inspect the release manifest (`aapt2 dump permissions`) and confirm it has no `QUERY_ALL_PACKAGES`, and that `INTERNET` comes only from Play Billing's `datatransport` (see the manifest merger report).
 
 ## Release signing
 

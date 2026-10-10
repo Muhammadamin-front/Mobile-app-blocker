@@ -19,6 +19,10 @@
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
       </intent>
+      <!-- To send the weekly card straight to Telegram when it is installed. -->
+      <package android:name="org.telegram.messenger" />
+      <package android:name="org.telegram.messenger.web" />
+      <package android:name="org.thunderdog.challegram" />
     </queries>
 
     <application
@@ -90,6 +94,15 @@
           <action android:name="android.service.quicksettings.action.QS_TILE" />
         </intent-filter>
       </service>
+      <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.share"
+        android:exported="false"
+        android:grantUriPermissions="true">
+        <meta-data
+          android:name="android.support.FILE_PROVIDER_PATHS"
+          android:resource="@xml/share_paths" />
+      </provider>
       <receiver
         android:name=".BootReceiver"
         android:enabled="true"

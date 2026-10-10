@@ -270,6 +270,95 @@ export const uz: Dictionary = {
   Continue: 'Davom etish',
   'Check access and continue': 'Ruxsatni tekshirib, davom etish',
 
+  // Pro
+  'For the hours you cannot afford to lose.': 'Yo’qotib bo’lmaydigan soatlar uchun.',
+  'Strict sessions: no Stop button until the timer runs out.':
+    'Qat’iy sessiya: taymer tugaguncha «To’xtatish» tugmasi bo’lmaydi.',
+  'Strict schedules: lessons and homework start locked on their own.':
+    'Qat’iy jadval: dars va uy vazifasi vaqti o’zi qulflanib boshlanadi.',
+  'One payment, not a subscription. It stays with your Google account.':
+    'Bir martalik to’lov, obuna emas. Google akkauntingizda saqlanib qoladi.',
+  'Android always lets you turn off Accessibility or uninstall an app, and Qoriqchi never blocks that. If protection is turned off during a session, the session is recorded as broken.':
+    'Android har doim Accessibility’ni o’chirish yoki ilovani o’chirib tashlashga ruxsat beradi, Qoriqchi bunga to’sqinlik qilmaydi. Sessiya paytida himoya o’chirilsa, sessiya «buzilgan» deb yoziladi.',
+  'Payment pending. Pro unlocks as soon as Google Play confirms it.':
+    'To’lov kutilmoqda. Google Play tasdiqlashi bilan Pro ochiladi.',
+  'Pro can only be bought in the Google Play version of Qoriqchi.':
+    'Pro’ni faqat Google Play’dan o’rnatilgan Qoriqchi’da sotib olish mumkin.',
+  'Unlock Pro · {price}': 'Pro’ni ochish · {price}',
+  'Unlock Pro': 'Pro’ni ochish',
+  'Restore purchase': 'Xaridni tiklash',
+  'Not now': 'Hozir emas',
+  'Pro is active': 'Pro faol',
+  'Strict sessions and strict schedules': 'Qat’iy sessiyalar va qat’iy jadvallar',
+  'Thank you. Strict sessions are unlocked on this phone.':
+    'Rahmat. Bu telefonda qat’iy sessiyalar ochildi.',
+  'One payment through Google Play. No subscription.':
+    'Google Play orqali bir martalik to’lov. Obuna yo’q.',
+  Active: 'Faol',
+  Pending: 'Kutilmoqda',
+  'See Pro': 'Pro haqida',
+  'Strict sessions are part of Qoriqchi Pro.': 'Qat’iy sessiyalar Qoriqchi Pro tarkibida.',
+  'Strict schedules are part of Qoriqchi Pro.': 'Qat’iy jadvallar Qoriqchi Pro tarkibida.',
+  'The purchase did not go through.': 'Xarid amalga oshmadi.',
+
+  // Streak and honest accounting
+  '{n}-day streak': '{n} kunlik seriya',
+  'day streak': 'kunlik seriya',
+  '{time} protected all time': 'Jami {time} himoyalangan',
+  'Today counts. Best streak: {n} days.': 'Bugun hisoblandi. Eng uzun seriya: {n} kun.',
+  'Finish a {m}-minute session today to keep the streak.':
+    'Seriya uzilmasligi uchun bugun {m} daqiqalik sessiyani oxiriga yetkazing.',
+  Broken: 'Buzilgan',
+  'This session is broken': 'Bu sessiya buzildi',
+  'Protection was turned off at {time}. Blocking resumes when it is back on, but this session no longer counts toward your streak.':
+    'Himoya soat {time} da o’chirildi. Qayta yoqilsa bloklash davom etadi, lekin bu sessiya endi seriyaga qo’shilmaydi.',
+  'day streak · today counts': 'kunlik seriya · bugun hisoblandi',
+  'day streak · one {m}-minute session keeps it': 'kunlik seriya · bitta {m} daqiqalik sessiya uni saqlaydi',
+
+  // Exam countdown and study presets
+  Exam: 'Imtihon',
+  'Final exams': 'Attestatsiya',
+  Other: 'Boshqa',
+  days: 'kun',
+  '{exam} is today': '{exam} — bugun',
+  'until {exam}': '{exam}gacha qoldi',
+  'Shown on the block screen too. Tap to change.':
+    'Blok ekranida ham ko’rinadi. O’zgartirish uchun bosing.',
+  'Your exam has passed': 'Imtihon o’tib ketdi',
+  'Set the next one and the countdown starts again.':
+    'Keyingisini qo’shing, sanoq yana boshlanadi.',
+  'Counting down to an exam?': 'Imtihonga tayyorlanyapsizmi?',
+  'Add DTM, final exams or IELTS. The days left appear when you reach for a blocked app.':
+    'DTM, attestatsiya yoki IELTS sanasini qo’shing. Bloklangan ilovani ochmoqchi bo’lganingizda qolgan kunlar ko’rinadi.',
+  'Exam name': 'Imtihon nomi',
+  Date: 'Sana',
+  'Choose a date': 'Sanani tanlang',
+  Save: 'Saqlash',
+  Remove: 'Olib tashlash',
+  Lessons: 'Dars vaqti',
+  Homework: 'Uy vazifasi',
+  'Exam prep': 'Imtihonga tayyorgarlik',
+  'Mon–Sat': 'Du–Sha',
+  'Adds this schedule now. You can edit it after.':
+    'Jadval darhol qo’shiladi. Keyin tahrirlash mumkin.',
+
+  // Block screen material
+  'English words · B1–B2': 'Inglizcha so’zlar · B1–B2',
+  '{seen} of {total} seen · {learned} learned': '{total} tadan {seen} tasi ko’rilgan · {learned} tasi o’rganilgan',
+  'When you open a blocked app, Qoriqchi shows this instead.':
+    'Bloklangan ilovani ochganingizda Qoriqchi uning o’rniga shuni ko’rsatadi.',
+  'Books: public-domain texts from Wikisource. Words: New General Service List (CC BY-SA 4.0). Everything is stored on this phone.':
+    'Kitoblar: Wikisource’dagi jamoat mulki matnlari. So’zlar: New General Service List (CC BY-SA 4.0). Hammasi shu telefonda saqlanadi.',
+
+  // Sharing
+  'Share on Telegram': 'Telegram’da ulashish',
+  More: 'Boshqa',
+  'A picture of this week: focus time, streak, pages and words. Nothing else about you.':
+    'Shu haftaning rasmi: fokus vaqti, seriya, sahifa va so’zlar. Siz haqingizda boshqa hech narsa yo’q.',
+
+  '{d} still to go. Your blocked apps unlock the moment this ends.':
+    'Yana {d} qoldi. Sessiya tugashi bilan bloklangan ilovalar ochiladi.',
+
   // Errors
   'That didn’t work': 'Bajarilmadi',
   'Got it': 'Tushundim',

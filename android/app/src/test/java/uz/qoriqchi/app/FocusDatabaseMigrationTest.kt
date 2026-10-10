@@ -124,6 +124,30 @@ class FocusDatabaseMigrationTest {
   }
 
   @Test
+  fun sessionsFromBeforeIntegrityChecksStayUnbrokenAndKeepTheirStreak() {
+    createLegacy(4) { db ->
+      insertSession(db, id = "old-7", status = "COMPLETED", version = 4, endedAt = NOW)
+    }
+
+    val database = FocusDatabase.get(context)
+
+    assertEquals(null, database.getHistory().single().brokenAt)
+    assertEquals(1, database.getStreak(NOW).current)
+  }
+
+  @Test
+  fun upgradingCreatesTheProgressTablesAndTheyCount() {
+    createLegacy(4) { _ -> }
+
+    val database = FocusDatabase.get(context)
+    database.bumpDaily("pages", NOW)
+    database.bumpDaily("pages", NOW)
+    database.bumpDaily("words", NOW)
+
+    assertEquals(2 to 1, database.getRecentProgress(7, NOW))
+  }
+
+  @Test
   fun settingsSurviveEveryUpgrade() {
     createLegacy(1) { db ->
       db.execSQL(
@@ -209,6 +233,20 @@ class FocusDatabaseMigrationTest {
     }
     if (version >= 3) {
       db.execSQL("ALTER TABLE sessions ADD COLUMN strict INTEGER NOT NULL DEFAULT 0")
+    }
+    if (version >= 4) {
+      db.execSQL(
+        """CREATE TABLE schedules (
+          id TEXT PRIMARY KEY NOT NULL,
+          label TEXT NOT NULL,
+          days INTEGER NOT NULL,
+          start_minute INTEGER NOT NULL,
+          duration_minutes INTEGER NOT NULL,
+          strict INTEGER NOT NULL DEFAULT 0,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          created_at INTEGER NOT NULL
+        )""",
+      )
     }
     seed(db)
     db.version = version

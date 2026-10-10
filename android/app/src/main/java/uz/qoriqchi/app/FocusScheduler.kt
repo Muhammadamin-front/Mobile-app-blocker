@@ -80,7 +80,7 @@ object FocusScheduler {
         }
         .maxByOrNull { it.second }
       if (due != null && database.getCurrentSession() == null) {
-        start(database, due.first, due.second, now)
+        start(appContext, database, due.first, due.second, now)
       }
     } catch (error: Throwable) {
       Log.w(TAG, "Could not start the scheduled session.", error)
@@ -92,6 +92,7 @@ object FocusScheduler {
   }
 
   private fun start(
+    context: Context,
     database: FocusDatabase,
     schedule: StoredSchedule,
     dueAt: Long,
@@ -114,7 +115,8 @@ object FocusScheduler {
       startTimestamp = minOf(dueAt, now),
       endTimestamp = end,
       blockedApps = apps,
-      strict = schedule.strict,
+      // A strict schedule saved under Pro runs as an ordinary one if Pro is refunded.
+      strict = schedule.strict && ProStore.isUnlocked(context),
     )
   }
 

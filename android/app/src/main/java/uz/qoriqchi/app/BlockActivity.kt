@@ -48,6 +48,7 @@ class BlockActivity : ComponentActivity() {
   private lateinit var timerCard: View
   private lateinit var quoteBlock: View
   private lateinit var remainingChip: TextView
+  private lateinit var examChip: TextView
   private lateinit var readerCard: View
   private lateinit var readerMeta: TextView
   private lateinit var readerChapter: TextView
@@ -55,6 +56,18 @@ class BlockActivity : ComponentActivity() {
   private lateinit var readerCounter: TextView
   private lateinit var prevButton: TextView
   private lateinit var nextButton: TextView
+  private lateinit var wordCard: View
+  private lateinit var wordMeta: TextView
+  private lateinit var wordText: TextView
+  private lateinit var wordDefinition: TextView
+  private lateinit var wordUzbek: TextView
+  private lateinit var revealButton: TextView
+  private lateinit var answerRow: View
+  private lateinit var againButton: TextView
+  private lateinit var knownButton: TextView
+  private var wordRound: List<DeckWord> = emptyList()
+  private var wordIndex = 0
+  private var reviewedToday = 0
   private var readingBook: String? = null
   private var readingPages: List<BookPage> = emptyList()
   private var readingPage = 0
@@ -160,6 +173,24 @@ class BlockActivity : ComponentActivity() {
    */
   private fun loadReader() {
     executor.execute {
+      val examLine = runCatching { ExamCountdown.blockLine(this, database) }.getOrNull()
+      handler.post {
+        if (isFinishing || isDestroyed) return@post
+        examChip.text = examLine.orEmpty()
+        examChip.visibility = if (examLine == null) View.GONE else View.VISIBLE
+      }
+      if (runCatching { database.getBlockMaterial() }.getOrNull() == "words") {
+        val round = nextWords()
+        handler.post {
+          if (isFinishing || isDestroyed) return@post
+          if (round.isEmpty()) {
+            showMode(MODE_TIMER)
+          } else {
+            startRound(round)
+          }
+        }
+        return@execute
+      }
       val id = runCatching { database.getSelectedBook() }.getOrNull()
       val pages = if (id == null) emptyList() else BookLibrary.pages(this, id)
       val book = id?.let { BookLibrary.book(this, it) }
@@ -168,28 +199,108 @@ class BlockActivity : ComponentActivity() {
         if (isFinishing || isDestroyed) return@post
         if (id == null || book == null || pages.isEmpty()) {
           readingBook = null
-          showReader(false)
+          showMode(MODE_TIMER)
           return@post
         }
         readingBook = id
         readingPages = pages
         readingPage = saved.coerceIn(0, pages.lastIndex)
         readerMeta.text = getString(R.string.reader_meta, book.author, book.title)
-        showReader(true)
+        showMode(MODE_BOOK)
         renderPage()
       }
     }
   }
 
-  private fun showReader(reading: Boolean) {
-    val bookOnly = if (reading) View.VISIBLE else View.GONE
-    val timerOnly = if (reading) View.GONE else View.VISIBLE
-    readerCard.visibility = bookOnly
-    remainingChip.visibility = bookOnly
-    shieldView.visibility = timerOnly
-    titleView.visibility = timerOnly
-    timerCard.visibility = timerOnly
-    quoteBlock.visibility = timerOnly
+  /** One of three faces: the countdown and quote, a page of the book, or English words. */
+  private fun showMode(mode: Int) {
+    fun shown(on: Boolean) = if (on) View.VISIBLE else View.GONE
+    val timer = mode == MODE_TIMER
+    readerCard.visibility = shown(mode == MODE_BOOK)
+    wordCard.visibility = shown(mode == MODE_WORDS)
+    remainingChip.visibility = shown(!timer)
+    shieldView.visibility = shown(timer)
+    titleView.visibility = shown(timer)
+    timerCard.visibility = shown(timer)
+    quoteBlock.visibility = shown(timer)
+  }
+
+  /** Runs on the executor. */
+  private fun nextWords(): List<DeckWord> = runCatching {
+    val deck = WordDeck.words(this)
+    val states = database.getWordStates()
+    reviewedToday = database.getRecentProgress(1).second
+    WordScheduler.next(deck, states, System.currentTimeMillis(), WORDS_PER_ROUND)
+  }.getOrDefault(emptyList())
+
+  private fun startRound(round: List<DeckWord>) {
+    wordRound = round
+    wordIndex = 0
+    showMode(MODE_WORDS)
+    renderWord()
+  }
+
+  private fun renderWord() {
+    val word = wordRound.getOrNull(wordIndex)
+    if (word == null) {
+      // The round is done: say so, and offer another rather than forcing one.
+      wordMeta.text = getString(R.string.words_done_meta, reviewedToday)
+      wordText.text = getString(R.string.words_done_title, wordRound.size)
+      wordDefinition.text = getString(R.string.words_done_body)
+      wordDefinition.visibility = View.VISIBLE
+      wordUzbek.visibility = View.GONE
+      answerRow.visibility = View.GONE
+      revealButton.visibility = View.VISIBLE
+      revealButton.text = getString(R.string.words_more)
+      revealButton.setOnClickListener { moreWords() }
+      return
+    }
+    wordMeta.text = getString(R.string.words_meta, wordIndex + 1, wordRound.size)
+    wordText.text = word.word
+    wordDefinition.text = word.definition
+    wordDefinition.visibility = if (word.definition.isBlank()) View.GONE else View.VISIBLE
+    wordUzbek.text = word.uzbek
+    wordUzbek.visibility = View.GONE
+    answerRow.visibility = View.GONE
+    revealButton.visibility = View.VISIBLE
+    revealButton.text = getString(R.string.words_reveal)
+    revealButton.setOnClickListener { reveal() }
+  }
+
+  private fun reveal() {
+    wordUzbek.visibility = View.VISIBLE
+    revealButton.visibility = View.GONE
+    answerRow.visibility = View.VISIBLE
+  }
+
+  private fun answer(known: Boolean) {
+    val word = wordRound.getOrNull(wordIndex) ?: return
+    wordIndex++
+    reviewedToday++
+    renderWord()
+    executor.execute {
+      runCatching {
+        val now = System.currentTimeMillis()
+        val previous = database.getWordStates()[word.word]
+        val next = if (known) WordScheduler.known(previous, now) else WordScheduler.again(now)
+        database.saveWordReview(word.word, next, now)
+      }
+    }
+  }
+
+  private fun moreWords() {
+    executor.execute {
+      val round = nextWords()
+      handler.post {
+        if (isFinishing || isDestroyed) return@post
+        if (round.isEmpty()) {
+          wordDefinition.text = getString(R.string.words_all_caught_up)
+          revealButton.visibility = View.GONE
+        } else {
+          startRound(round)
+        }
+      }
+    }
   }
 
   private fun renderPage() {
@@ -375,6 +486,19 @@ class BlockActivity : ComponentActivity() {
       marginEnd = dp(14)
     })
 
+    // The exam is the reason to put the phone down; it sits right under the app's name.
+    examChip = text("", 13.5f, DARK_BLUE, Typeface.BOLD).apply {
+      background = rounded(PRIMARY, 50, PRIMARY_LIGHT, 1)
+      setPadding(dp(16), dp(9), dp(16), dp(9))
+      visibility = View.GONE
+    }
+    content.addView(examChip, LinearLayout.LayoutParams(
+      LinearLayout.LayoutParams.WRAP_CONTENT,
+      LinearLayout.LayoutParams.WRAP_CONTENT,
+    ).apply {
+      topMargin = dp(12)
+    })
+
     remainingChip = text("", 12.5f, PRIMARY_LIGHT, Typeface.BOLD).apply {
       typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
       background = rounded(PILL_SURFACE, 50, PILL_BORDER, 1)
@@ -510,6 +634,83 @@ class BlockActivity : ComponentActivity() {
     })
     readerCard = reader
 
+    // English words: the word and its plain-English meaning first, the Uzbek only when
+    // asked for, so each card is a moment of recall rather than of reading.
+    val words = LinearLayout(this).apply {
+      orientation = LinearLayout.VERTICAL
+      background = rounded(SURFACE, 28, BORDER, 1)
+      elevation = dp(10).toFloat()
+      setPadding(dp(22), dp(20), dp(22), dp(18))
+      visibility = View.GONE
+    }
+    wordMeta = text("", 11f, TEXT_SUBTLE, Typeface.BOLD).apply {
+      gravity = Gravity.START
+      letterSpacing = 0.08f
+    }
+    words.addView(wordMeta)
+    wordText = text("", 34f, Color.WHITE, Typeface.BOLD).apply {
+      gravity = Gravity.START
+      setPadding(0, dp(16), 0, 0)
+    }
+    words.addView(wordText)
+    wordDefinition = text("", 16f, TEXT_MUTED, Typeface.NORMAL).apply {
+      gravity = Gravity.START
+      setLineSpacing(dp(4).toFloat(), 1f)
+      setPadding(0, dp(10), 0, 0)
+      includeFontPadding = true
+    }
+    words.addView(wordDefinition)
+    wordUzbek = text("", 21f, PRIMARY_LIGHT, Typeface.BOLD).apply {
+      gravity = Gravity.START
+      setPadding(0, dp(16), 0, 0)
+      visibility = View.GONE
+    }
+    words.addView(wordUzbek)
+    words.addView(View(this).apply {
+      background = rounded(DIVIDER, 1)
+    }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)).apply {
+      topMargin = dp(20)
+      bottomMargin = dp(14)
+    })
+    revealButton = text(getString(R.string.words_reveal), 15f, DARK_BLUE, Typeface.BOLD).apply {
+      background = rounded(PRIMARY, 22, PRIMARY_LIGHT, 1)
+      setPadding(dp(22), dp(12), dp(22), dp(12))
+      isClickable = true
+    }
+    words.addView(revealButton, LinearLayout.LayoutParams(
+      LinearLayout.LayoutParams.MATCH_PARENT,
+      dp(48),
+    ))
+    val answers = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      visibility = View.GONE
+    }
+    againButton = text(getString(R.string.words_again), 14f, PRIMARY_LIGHT, Typeface.BOLD).apply {
+      background = rounded(PILL_SURFACE, 22, PILL_BORDER, 1)
+      isClickable = true
+      setOnClickListener { answer(known = false) }
+    }
+    answers.addView(againButton, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(10) })
+    knownButton = text(getString(R.string.words_known), 15f, DARK_BLUE, Typeface.BOLD).apply {
+      background = rounded(PRIMARY, 22, PRIMARY_LIGHT, 1)
+      isClickable = true
+      setOnClickListener { answer(known = true) }
+    }
+    answers.addView(knownButton, LinearLayout.LayoutParams(0, dp(48), 1f))
+    words.addView(answers)
+    answerRow = answers
+    words.addView(text(getString(R.string.words_credit), 10.5f, TEXT_SUBTLE).apply {
+      gravity = Gravity.START
+      setPadding(0, dp(14), 0, 0)
+    })
+    content.addView(words, LinearLayout.LayoutParams(
+      LinearLayout.LayoutParams.MATCH_PARENT,
+      LinearLayout.LayoutParams.WRAP_CONTENT,
+    ).apply {
+      topMargin = dp(16)
+    })
+    wordCard = words
+
     val homeButton = LinearLayout(this).apply {
       orientation = LinearLayout.HORIZONTAL
       gravity = Gravity.CENTER
@@ -627,6 +828,10 @@ class BlockActivity : ComponentActivity() {
     const val EXTRA_REMAINING_MILLIS = "blocked_remaining_millis"
     const val EXTRA_QUOTE_SEED = "blocked_quote_seed"
     private const val SYNC_INTERVAL_MILLIS = 5_000L
+    private const val WORDS_PER_ROUND = 5
+    private const val MODE_TIMER = 0
+    private const val MODE_BOOK = 1
+    private const val MODE_WORDS = 2
 
     private val BACKGROUND = Color.rgb(2, 9, 22)
     private val SURFACE = Color.argb(226, 10, 31, 63)

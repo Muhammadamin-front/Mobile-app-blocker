@@ -7,6 +7,7 @@ import {useAppStore} from '../../state/AppStore';
 import {radii, spacing, Theme} from '../../theme/theme';
 import {BatteryCard} from '../BatteryCard';
 import {BrandMark, Card, PrimaryButton, ScreenHeader, SectionTitle, StatusBadge} from '../components';
+import {ProSheet} from '../ProSheet';
 
 const themeOptions: Array<{value: ThemePreference; label: string; glyph: string}> = [
   {value: 'system', label: 'Auto', glyph: 'A'},
@@ -26,9 +27,11 @@ export function SettingsScreen({theme}: {theme: Theme}) {
     language,
     setLanguage,
     resetAllData,
+    pro,
     t,
   } = useAppStore();
   const [showDisclosure, setShowDisclosure] = useState(false);
+  const [proOpen, setProOpen] = useState(false);
 
   const confirmReset = () => Alert.alert(
     t('Reset local data?'),
@@ -183,6 +186,33 @@ export function SettingsScreen({theme}: {theme: Theme}) {
         </View>
       </Card>
 
+      <SectionTitle theme={theme}>Qoriqchi Pro</SectionTitle>
+      <Card theme={theme} style={styles.proCard}>
+        <View style={styles.proRow}>
+          <View style={styles.proCopy}>
+            <Text style={[styles.rowTitle, {color: theme.text}]}>
+              {pro.unlocked ? t('Pro is active') : t('Strict sessions and strict schedules')}
+            </Text>
+            <Text style={[styles.rowBody, {color: theme.textMuted}]}>
+              {pro.unlocked
+                ? t('Thank you. Strict sessions are unlocked on this phone.')
+                : t('One payment through Google Play. No subscription.')}
+            </Text>
+          </View>
+          <StatusBadge
+            label={pro.unlocked ? t('Active') : pro.pending ? t('Pending') : 'Pro'}
+            theme={theme}
+            tone={pro.unlocked ? 'success' : pro.pending ? 'warning' : 'primary'}
+          />
+        </View>
+        {pro.unlocked ? null : (
+          <View style={styles.proAction}>
+            <PrimaryButton label={t('See Pro')} onPress={() => setProOpen(true)} theme={theme} variant="secondary" />
+          </View>
+        )}
+      </Card>
+      <ProSheet theme={theme} visible={proOpen} onClose={() => setProOpen(false)} />
+
       <SectionTitle theme={theme}>{t('Privacy & data')}</SectionTitle>
       <Card theme={theme} style={styles.privacyCard}>
         <View style={styles.offlineRow}>
@@ -260,6 +290,10 @@ const styles = StyleSheet.create({
   segmentLabel: {fontSize: 12, fontWeight: '600'},
   segmentLabelActive: {fontWeight: '800'},
   privacyCard: {marginBottom: spacing.xl},
+  proCard: {marginBottom: spacing.xl},
+  proRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.sm},
+  proCopy: {flex: 1},
+  proAction: {marginTop: spacing.md},
   offlineRow: {flexDirection: 'row', alignItems: 'center'},
   offlineIcon: {width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
   offlineGlyph: {fontSize: 17, fontWeight: '900'},

@@ -10,6 +10,7 @@ import React, {
 } from 'react';
 import {AppState} from 'react-native';
 
+import {Exam} from '../domain/exam';
 import {IconMap, missingIconPackages, withIcons} from '../domain/icons';
 import {
   createTranslator,
@@ -26,8 +27,10 @@ import {
   FocusStats,
   InstalledApp,
   PermissionStatus,
+  ProStatus,
   ScreenTimeReport,
   StartSessionInput,
+  Streak,
   ThemePreference,
   TrendRange,
 } from '../domain/models';
@@ -57,6 +60,18 @@ const emptyTrends: FocusTrends = {
   topApps: [],
 };
 
+const emptyShelf: BookShelf = {
+  material: 'timer',
+  words: {deckSize: 0, seen: 0, learned: 0},
+  selected: null,
+  pagesRead: 0,
+  books: [],
+};
+
+const noStreak: Streak = {current: 0, best: 0, todayDone: false, minMinutes: 15};
+
+const lockedPro: ProStatus = {unlocked: false, available: false, price: null, pending: false};
+
 interface AppStoreValue {
   loading: boolean;
   busy: boolean;
@@ -69,7 +84,16 @@ interface AppStoreValue {
   trends: FocusTrends;
   schedules: FocusSchedule[];
   shelf: BookShelf;
+  pro: ProStatus;
+  streak: Streak;
+  exam: Exam | null;
+  saveExam(exam: Exam | null): Promise<void>;
+  pickDate(initial: string | null): Promise<string | null>;
+  /** Resolves true when Pro is unlocked afterwards; a closed sheet is not an error. */
+  buyPro(): Promise<boolean>;
   selectBook(id: string | null): Promise<void>;
+  selectWords(): Promise<void>;
+  shareProgress(target: 'telegram' | 'any'): Promise<void>;
   screenTime: ScreenTimeReport;
   trendRange: TrendRange;
   trendsLoading: boolean;
@@ -110,7 +134,10 @@ export function AppStoreProvider({children}: PropsWithChildren) {
   const [trends, setTrends] = useState<FocusTrends>(emptyTrends);
   const [screenTime, setScreenTime] = useState<ScreenTimeReport>(emptyScreenTime);
   const [schedules, setSchedules] = useState<FocusSchedule[]>([]);
-  const [shelf, setShelf] = useState<BookShelf>({selected: null, pagesRead: 0, books: []});
+  const [shelf, setShelf] = useState<BookShelf>(emptyShelf);
+  const [pro, setPro] = useState<ProStatus>(lockedPro);
+  const [streak, setStreak] = useState<Streak>(noStreak);
+  const [exam, setExam] = useState<Exam | null>(null);
   const [trendRange, setTrendRange] = useState<TrendRange>('week');
   const [trendsLoading, setTrendsLoading] = useState(true);
   const [permission, setPermission] = useState<PermissionStatus>({
@@ -158,6 +185,8 @@ export function AppStoreProvider({children}: PropsWithChildren) {
         nextSettings,
         apps,
         nextSchedules,
+        nextStreak,
+        nextExam,
       ] = await Promise.all([
           appBlockingService.getPermissionStatus(),
           appBlockingService.getActiveSession(),
@@ -166,8 +195,12 @@ export function AppStoreProvider({children}: PropsWithChildren) {
           appBlockingService.getSettings(),
           appBlockingService.getBlockedApps(),
           appBlockingService.getSchedules(),
+          appBlockingService.getStreak(),
+          appBlockingService.getExam(),
         ]);
       appBlockingService.getBooks().then(setShelf).catch(() => undefined);
+      // Play can be slow or absent; the cached entitlement must never hold up the app.
+      appBlockingService.getPro().then(setPro).catch(() => undefined);
       setPermission(nextPermission);
       setActiveSession(session);
       setHistory(nextHistory);
@@ -175,6 +208,8 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       setSettings(nextSettings);
       setSelectedAppsState(apps);
       setSchedules(nextSchedules);
+      setStreak(nextStreak);
+      setExam(nextExam);
     });
   }, [run]);
 
@@ -200,7 +235,14 @@ export function AppStoreProvider({children}: PropsWithChildren) {
     const timer = setInterval(() => {
       appBlockingService
         .getPermissionStatus()
-        .then(setPermission)
+        .then(next => {
+          setPermission(next);
+          // With protection off the native side marks the session broken; re-read it
+          // so the screen says so now rather than at the next refresh.
+          if (!next.accessibilityEnabled) {
+            appBlockingService.getActiveSession().then(setActiveSession).catch(() => undefined);
+          }
+        })
         .catch(() => undefined);
     }, 8_000);
     return () => clearInterval(timer);
@@ -375,9 +417,26 @@ export function AppStoreProvider({children}: PropsWithChildren) {
     [run],
   );
 
+  const shareProgress = useCallback(
+    async (target: 'telegram' | 'any') => {
+      await run(async () => {
+        await appBlockingService.shareProgress(target);
+      });
+    },
+    [run],
+  );
+
+  const selectWords = useCallback(async () => {
+    setShelf(current => ({...current, material: 'words'}));
+    await run(async () => {
+      await appBlockingService.selectWords();
+      setShelf(await appBlockingService.getBooks());
+    });
+  }, [run]);
+
   const selectBook = useCallback(
     async (id: string | null) => {
-      setShelf(current => ({...current, selected: id}));
+      setShelf(current => ({...current, selected: id, material: id ? 'book' : 'timer'}));
       await run(async () => {
         await appBlockingService.selectBook(id);
         setShelf(await appBlockingService.getBooks());
@@ -385,6 +444,37 @@ export function AppStoreProvider({children}: PropsWithChildren) {
     },
     [run],
   );
+
+  const saveExam = useCallback(
+    async (next: Exam | null) => {
+      const previous = exam;
+      setExam(next);
+      await run(async () => {
+        try {
+          await appBlockingService.setExam(next);
+        } catch (caught) {
+          setExam(previous);
+          throw caught;
+        }
+      });
+    },
+    [exam, run],
+  );
+
+  const pickDate = useCallback(
+    (initial: string | null) => appBlockingService.pickDate(initial).catch(() => null),
+    [],
+  );
+
+  const buyPro = useCallback(async () => {
+    let unlocked = false;
+    await run(async () => {
+      const next = await appBlockingService.buyPro();
+      setPro(next);
+      unlocked = next.unlocked;
+    });
+    return unlocked;
+  }, [run]);
 
   const setLanguage = useCallback(
     async (language: LanguagePreference) => {
@@ -407,6 +497,8 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       setTrends(emptyTrends);
       setScreenTime(emptyScreenTime);
       setSchedules([]);
+      setStreak(noStreak);
+      setExam(null);
       setSettings({onboardingCompleted: false, themePreference: 'system', language: 'system'});
     });
     setBusy(false);
@@ -445,7 +537,15 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       trends,
       schedules,
       shelf,
+      pro,
+      streak,
+      exam,
+      saveExam,
+      pickDate,
+      buyPro,
       selectBook,
+      selectWords,
+      shareProgress,
       screenTime,
       trendRange,
       trendsLoading,
@@ -491,7 +591,15 @@ export function AppStoreProvider({children}: PropsWithChildren) {
       saveSchedule,
       schedules,
       selectBook,
+      selectWords,
+      shareProgress,
       shelf,
+      pro,
+      streak,
+      exam,
+      saveExam,
+      pickDate,
+      buyPro,
       screenTime,
       setLanguage,
       settings,

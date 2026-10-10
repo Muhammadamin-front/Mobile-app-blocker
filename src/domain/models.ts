@@ -20,6 +20,8 @@ export interface FocusSession {
   strict: boolean;
   completedReason?: string;
   blockedAttempts: number;
+  /** When protection was found off during the session. It then never counts toward a streak. */
+  brokenAt?: number;
   /** Native monotonic snapshots used for clock-change-resistant UI countdowns. */
   remainingMillis?: number;
   startsInMillis?: number;
@@ -61,6 +63,14 @@ export interface StartSessionInput {
   endTimestamp: number;
   blockedApps: InstalledApp[];
   strict: boolean;
+}
+
+/** Days in a row with a finished, unbroken session of at least `minMinutes`. */
+export interface Streak {
+  current: number;
+  best: number;
+  todayDone: boolean;
+  minMinutes: number;
 }
 
 export type TrendRange = 'week' | 'month' | 'year';
@@ -111,6 +121,17 @@ export interface FocusSchedule {
   enabled: boolean;
 }
 
+/** Pro unlocks strict sessions. Bought once through Google Play; cached on the phone. */
+export interface ProStatus {
+  unlocked: boolean;
+  /** Google Play answered on this phone and offers Pro, so it can be bought here. */
+  available: boolean;
+  /** Play's formatted price in the buyer's currency, or null until Play answers. */
+  price: string | null;
+  /** Paid with a method that settles later; unlocks once Play confirms it. */
+  pending: boolean;
+}
+
 export interface Book {
   id: string;
   title: string;
@@ -123,7 +144,13 @@ export interface Book {
   page: number;
 }
 
+export type BlockMaterial = 'book' | 'words' | 'timer';
+
 export interface BookShelf {
+  /** What the block screen shows. */
+  material: BlockMaterial;
+  /** English words: the deck's size, words seen, and words known several times over. */
+  words: {deckSize: number; seen: number; learned: number};
   selected: string | null;
   pagesRead: number;
   books: Book[];

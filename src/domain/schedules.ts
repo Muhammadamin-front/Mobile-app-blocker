@@ -4,6 +4,8 @@ export const DAY_KEYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as con
 export const EVERY_DAY = 0b1111111;
 export const WEEKDAYS = 0b0011111;
 export const WEEKEND = 0b1100000;
+/** Schools and many universities in Uzbekistan teach six days a week. */
+export const MON_TO_SAT = 0b0111111;
 
 export function hasDay(days: number, index: number): boolean {
   return ((days >> index) & 1) === 1;
@@ -27,6 +29,9 @@ export function describeDays(
   }
   if (masked === WEEKEND) {
     return translate('Weekend');
+  }
+  if (masked === MON_TO_SAT) {
+    return translate('Mon–Sat');
   }
   const names = DAY_KEYS.filter((_, index) => hasDay(masked, index)).map(day =>
     translate(day),
@@ -55,4 +60,29 @@ export function createSchedule(): FocusSchedule {
 export function shiftMinute(startMinute: number, deltaMinutes: number): number {
   const total = startMinute + deltaMinutes;
   return ((total % 1440) + 1440) % 1440;
+}
+
+export interface SchedulePreset {
+  /** English label, translated for display and stored translated as the schedule's name. */
+  label: string;
+  days: number;
+  startMinute: number;
+  durationMinutes: number;
+}
+
+/** One-tap study blocks. Times are a starting point; every one can be edited after. */
+export const STUDY_PRESETS: SchedulePreset[] = [
+  {label: 'Lessons', days: MON_TO_SAT, startMinute: 8 * 60, durationMinutes: 5 * 60},
+  {label: 'Homework', days: EVERY_DAY, startMinute: 19 * 60, durationMinutes: 2 * 60},
+  {label: 'Exam prep', days: MON_TO_SAT, startMinute: 16 * 60, durationMinutes: 2 * 60},
+];
+
+export function scheduleFromPreset(preset: SchedulePreset, label: string): FocusSchedule {
+  return {
+    ...createSchedule(),
+    label,
+    days: preset.days,
+    startMinute: preset.startMinute,
+    durationMinutes: preset.durationMinutes,
+  };
 }

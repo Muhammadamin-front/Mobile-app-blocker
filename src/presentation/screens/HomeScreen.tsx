@@ -16,6 +16,8 @@ import {
   formatMinutes,
   getSessionRemainingMillis,
 } from '../../domain/session';
+import {ExamCard} from '../ExamCard';
+import {ProPill, ProSheet} from '../ProSheet';
 import {ReadingSection} from '../ReadingSection';
 import {SchedulesSection} from '../SchedulesSection';
 import {useAppStore} from '../../state/AppStore';
@@ -49,12 +51,17 @@ export function HomeScreen({
     stopSession,
     openPermissionSettings,
     refresh,
+    pro,
+    streak,
     t,
   } = useAppStore();
+  const [proOpen, setProOpen] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [custom, setCustom] = useState('45');
   const [startDelayMinutes, setStartDelayMinutes] = useState(0);
-  const [strict, setStrict] = useState(false);
+  const [strictChoice, setStrict] = useState(false);
+  // Strict is Pro. A refund or a fresh install drops the choice instead of carrying it.
+  const strict = strictChoice && pro.unlocked;
   const [now, setNow] = useState(Date.now());
   const [monotonicNow, setMonotonicNow] = useState(monotonicTime());
   const [nativeTimerSnapshot, setNativeTimerSnapshot] = useState(() => ({
@@ -109,7 +116,7 @@ export function HomeScreen({
   const confirmEnd = () => {
     Alert.alert(
       t('End focus session?'),
-      `${formatDuration(remaining)} still to go. Your blocked apps unlock the moment this ends.`,
+      t('{d} still to go. Your blocked apps unlock the moment this ends.', {d: formatDuration(remaining)}),
       [
         {text: t('Keep focusing'), style: 'cancel'},
         {text: t('End session'), style: 'destructive', onPress: confirmEndAgain},
@@ -297,6 +304,18 @@ export function HomeScreen({
           </View>
         )}
 
+        {activeSession.brokenAt !== undefined ? (
+          <Card theme={theme} tone="muted" style={[styles.brokenCard, {borderColor: `${theme.danger}55`}]}>
+            <Text style={[styles.lockedTitle, {color: theme.danger}]}>{t('This session is broken')}</Text>
+            <Text style={[styles.lockedBody, {color: theme.textMuted}]}>
+              {t(
+                'Protection was turned off at {time}. Blocking resumes when it is back on, but this session no longer counts toward your streak.',
+                {time: new Date(activeSession.brokenAt).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})},
+              )}
+            </Text>
+          </Card>
+        ) : null}
+
         {activeSession.strict ? (
           <Card theme={theme} tone="muted" style={styles.lockedCard}>
             <Text style={[styles.lockedTitle, {color: theme.text}]}>
@@ -334,6 +353,17 @@ export function HomeScreen({
         subtitle={t('Choose what stays quiet, then let Qoriqchi hold the boundary.')}
       />
 
+      {streak.current > 0 ? (
+        <View style={[styles.streakChip, {backgroundColor: theme.primarySoft, borderColor: theme.borderStrong}]}>
+          <Text style={[styles.streakChipValue, {color: theme.primary}]}>{streak.current}</Text>
+          <Text style={[styles.streakChipText, {color: theme.text}]}>
+            {streak.todayDone
+              ? t('day streak · today counts')
+              : t('day streak · one {m}-minute session keeps it', {m: streak.minMinutes})}
+          </Text>
+        </View>
+      ) : null}
+
       {!permission.ready ? (
         <Pressable
           accessibilityRole="button"
@@ -353,6 +383,8 @@ export function HomeScreen({
           <Text style={[styles.permissionArrow, {color: theme.warning}]}>›</Text>
         </Pressable>
       ) : null}
+
+      <ExamCard theme={theme} />
 
       <View style={styles.sectionHeaderRow}>
         <SectionTitle theme={theme}>{t('Distractions')}</SectionTitle>
@@ -488,7 +520,7 @@ export function HomeScreen({
       <Pressable
         accessibilityRole="switch"
         accessibilityState={{checked: strict}}
-        onPress={() => setStrict(value => !value)}
+        onPress={() => (pro.unlocked ? setStrict(value => !value) : setProOpen(true))}
         style={({pressed}) => [
           styles.strictRow,
           {
@@ -510,7 +542,10 @@ export function HomeScreen({
           ) : null}
         </View>
         <View style={styles.strictCopy}>
-          <Text style={[styles.strictTitle, {color: theme.text}]}>{t('Strict session')}</Text>
+          <View style={styles.strictTitleRow}>
+            <Text style={[styles.strictTitle, {color: theme.text}]}>{t('Strict session')}</Text>
+            {pro.unlocked ? null : <ProPill theme={theme} />}
+          </View>
           <Text style={[styles.strictBody, {color: theme.textMuted}]}>
             {strict
               ? t('You will not be able to end this session early.')
@@ -518,6 +553,12 @@ export function HomeScreen({
           </Text>
         </View>
       </Pressable>
+      <ProSheet
+        theme={theme}
+        visible={proOpen}
+        onClose={() => setProOpen(false)}
+        onUnlocked={() => setStrict(true)}
+      />
 
       <PrimaryButton
         label={t('Start {d} focus', {d: formatMinutes(durationMinutes, t)})}
@@ -540,6 +581,9 @@ const styles = StyleSheet.create({
   content: {paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xxxl},
   activeContent: {paddingTop: spacing.md},
   pressed: {opacity: 0.72, transform: [{scale: 0.99}]},
+  streakChip: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start', borderWidth: 1, borderRadius: radii.pill, paddingVertical: 6, paddingHorizontal: spacing.sm, marginBottom: spacing.lg, marginTop: -spacing.sm},
+  streakChipValue: {fontSize: 15, fontWeight: '900', fontVariant: ['tabular-nums']},
+  streakChipText: {fontSize: 12.5, fontWeight: '600', flexShrink: 1},
   permissionCard: {minHeight: 80, borderRadius: radii.lg, borderWidth: 1, padding: spacing.md, flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xl},
   permissionIcon: {width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
   permissionGlyph: {fontSize: 20, fontWeight: '800'},
@@ -603,9 +647,11 @@ const styles = StyleSheet.create({
   },
   strictTick: {fontSize: 13, fontWeight: '900'},
   strictCopy: {flex: 1},
+  strictTitleRow: {flexDirection: 'row', alignItems: 'center', gap: spacing.xs},
   strictTitle: {fontSize: 14.5, fontWeight: '700'},
   strictBody: {fontSize: 12.5, lineHeight: 18, marginTop: 2},
   lockedCard: {alignItems: 'flex-start'},
+  brokenCard: {alignItems: 'flex-start', borderWidth: 1, marginBottom: spacing.md},
   lockedTitle: {fontSize: 15, fontWeight: '700', marginBottom: 4},
   lockedBody: {fontSize: 13, lineHeight: 19},
   summaryTitle: {fontSize: 16, fontWeight: '700'},

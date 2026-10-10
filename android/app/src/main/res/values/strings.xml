@@ -17,6 +17,7 @@
     <string name="notification_blocked_apps">%1$d app blocked</string>
     <string name="notification_blocked_apps_plural">%1$d apps blocked</string>
     <string name="notification_starts_soon">Starting soon</string>
+    <string name="notification_broken">Protection was off — this session won\'t count toward your streak</string>
     <string name="block_quote" translatable="false">“%1$s”</string>
     <string name="block_quote_author" translatable="false">— %1$s</string>
     <string name="tile_label" translatable="false">Qoriqchi</string>
@@ -29,4 +30,30 @@
     <string name="reader_previous">‹ Previous</string>
     <string name="reader_next">Next page ›</string>
     <string name="reader_finished">The end</string>
+    <string name="exam_dtm">DTM</string>
+    <string name="exam_attestation">Final exams</string>
+    <string name="exam_generic">Your exam</string>
+    <string name="block_exam_days">%1$s in %2$d days</string>
+    <string name="block_exam_tomorrow">%1$s is tomorrow</string>
+    <string name="block_exam_today">%1$s is today. You\'ve got this.</string>
+    <string name="words_meta">ENGLISH WORD · %1$d / %2$d</string>
+    <string name="words_reveal">Show the meaning</string>
+    <string name="words_again">Show again</string>
+    <string name="words_known">I know it</string>
+    <string name="words_done_meta">TODAY: %1$d WORDS</string>
+    <string name="words_done_title">%1$d words reviewed</string>
+    <string name="words_done_body">The ones you knew come back in a few days, the rest in a few minutes.</string>
+    <string name="words_more">5 more words</string>
+    <string name="words_all_caught_up">Nothing is due right now. Come back later.</string>
+    <string name="words_credit">Words: New General Service List 1.2 · CC BY-SA 4.0</string>
+    <string name="share_this_week">This week</string>
+    <string name="share_focus_label">of focused time</string>
+    <string name="share_streak">day streak</string>
+    <string name="share_pages">pages read</string>
+    <string name="share_pages_of">pages of %1$s</string>
+    <string name="share_words">English words reviewed</string>
+    <string name="share_footer">The phone did not decide. I did.</string>
+    <string name="share_minutes">%1$d min</string>
+    <string name="share_hours_minutes">%1$d h %2$d min</string>
+    <string name="share_caption">This week I focused for %1$s with Qoriqchi.</string>
 </resources>

@@ -1,6 +1,7 @@
 import {NativeModules, PermissionsAndroid, Platform} from 'react-native';
 
 import {LanguagePreference} from '../i18n';
+import {Exam} from '../domain/exam';
 import {IconMap, withoutIcons} from '../domain/icons';
 
 import {
@@ -12,8 +13,10 @@ import {
   FocusStats,
   InstalledApp,
   PermissionStatus,
+  ProStatus,
   ScreenTimeReport,
   StartSessionInput,
+  Streak,
   ThemePreference,
   TrendRange,
 } from '../domain/models';
@@ -35,9 +38,17 @@ interface NativeFocusGuardModule {
   getHistory(): Promise<FocusSession[]>;
   getStatistics(): Promise<FocusStats>;
   getTrends(range: TrendRange): Promise<FocusTrends>;
+  getStreak(): Promise<Streak>;
   getSchedules(): Promise<FocusSchedule[]>;
   getBooks(): Promise<BookShelf>;
   selectBook(id: string | null): Promise<void>;
+  selectWords(): Promise<void>;
+  shareProgress(target: 'telegram' | 'any'): Promise<boolean>;
+  getExam(): Promise<Exam | null>;
+  setExam(exam: Exam | null): Promise<void>;
+  pickDate(initial: string | null): Promise<string | null>;
+  getPro(): Promise<ProStatus>;
+  buyPro(): Promise<ProStatus>;
   saveSchedule(schedule: FocusSchedule): Promise<void>;
   deleteSchedule(id: string): Promise<void>;
   getSettings(): Promise<AppSettings>;
@@ -98,9 +109,17 @@ export const appBlockingService: AppBlockingService = {
   getHistory: () => getNativeModule().getHistory(),
   getStatistics: () => getNativeModule().getStatistics(),
   getTrends: range => getNativeModule().getTrends(range),
+  getStreak: () => getNativeModule().getStreak(),
   getSchedules: () => getNativeModule().getSchedules(),
   getBooks: () => getNativeModule().getBooks(),
   selectBook: id => getNativeModule().selectBook(id),
+  selectWords: () => getNativeModule().selectWords(),
+  shareProgress: target => getNativeModule().shareProgress(target),
+  getExam: () => getNativeModule().getExam(),
+  setExam: exam => getNativeModule().setExam(exam),
+  pickDate: initial => getNativeModule().pickDate(initial),
+  getPro: () => getNativeModule().getPro(),
+  buyPro: () => getNativeModule().buyPro(),
   saveSchedule: schedule => getNativeModule().saveSchedule(schedule),
   deleteSchedule: id => getNativeModule().deleteSchedule(id),
   getSettings: () => getNativeModule().getSettings(),

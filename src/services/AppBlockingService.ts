@@ -1,4 +1,5 @@
 import {LanguagePreference} from '../i18n';
+import {Exam} from '../domain/exam';
 import {IconMap} from '../domain/icons';
 import {
   AppSettings,
@@ -9,8 +10,10 @@ import {
   FocusStats,
   InstalledApp,
   PermissionStatus,
+  ProStatus,
   ScreenTimeReport,
   StartSessionInput,
+  Streak,
   ThemePreference,
   TrendRange,
 } from '../domain/models';
@@ -36,9 +39,20 @@ export interface AppBlockingService {
   getHistory(): Promise<FocusSession[]>;
   getStatistics(): Promise<FocusStats>;
   getTrends(range: TrendRange): Promise<FocusTrends>;
+  getStreak(): Promise<Streak>;
   getSchedules(): Promise<FocusSchedule[]>;
   getBooks(): Promise<BookShelf>;
   selectBook(id: string | null): Promise<void>;
+  selectWords(): Promise<void>;
+  /** Draws this week's card and opens the share sheet; resolves true if Telegram took it. */
+  shareProgress(target: 'telegram' | 'any'): Promise<boolean>;
+  getExam(): Promise<Exam | null>;
+  setExam(exam: Exam | null): Promise<void>;
+  /** Android's date picker; resolves yyyy-mm-dd, or null when dismissed. */
+  pickDate(initial: string | null): Promise<string | null>;
+  getPro(): Promise<ProStatus>;
+  /** Opens Google Play's purchase sheet; resolves with the status once it closes. */
+  buyPro(): Promise<ProStatus>;
   saveSchedule(schedule: FocusSchedule): Promise<void>;
   deleteSchedule(id: string): Promise<void>;
   getSettings(): Promise<AppSettings>;

@@ -38,6 +38,8 @@ data class StoredSession(
   val completedReason: String?,
   val blockedAttempts: Int,
   val strict: Boolean,
+  /** When protection was found off during this session; it no longer counts toward a streak. */
+  val brokenAt: Long? = null,
 )
 
 class FocusDatabase private constructor(context: Context) :
@@ -65,6 +67,7 @@ class FocusDatabase private constructor(context: Context) :
         completed_reason TEXT,
         ended_at INTEGER,
         strict INTEGER NOT NULL DEFAULT 0,
+        broken_at INTEGER,
         created_at INTEGER NOT NULL
       )""",
     )
@@ -98,6 +101,26 @@ class FocusDatabase private constructor(context: Context) :
         setting_value TEXT NOT NULL
       )""",
     )
+    createProgressTables(db)
+  }
+
+  /** Per-day reading and word counts, and where each English word stands in review. */
+  private fun createProgressTables(db: SQLiteDatabase) {
+    db.execSQL(
+      """CREATE TABLE daily_progress (
+        day TEXT PRIMARY KEY NOT NULL,
+        pages INTEGER NOT NULL DEFAULT 0,
+        words INTEGER NOT NULL DEFAULT 0
+      )""",
+    )
+    db.execSQL(
+      """CREATE TABLE word_progress (
+        word TEXT PRIMARY KEY NOT NULL,
+        box INTEGER NOT NULL,
+        due_at INTEGER NOT NULL,
+        reviews INTEGER NOT NULL DEFAULT 0
+      )""",
+    )
   }
 
   override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -124,6 +147,12 @@ class FocusDatabase private constructor(context: Context) :
           created_at INTEGER NOT NULL
         )""",
       )
+    }
+    if (oldVersion < 5) {
+      // Sessions before this version were never checked for protection being turned
+      // off, so they stay unbroken rather than being judged after the fact.
+      db.execSQL("ALTER TABLE sessions ADD COLUMN broken_at INTEGER")
+      createProgressTables(db)
     }
   }
 
@@ -184,6 +213,39 @@ class FocusDatabase private constructor(context: Context) :
     }
     writableDatabase.update("sessions", values, "id = ?", arrayOf(current.id))
     return getSession(current.id)
+  }
+
+  /**
+   * Records that protection was off while this session ran. The first time is the one
+   * that counts; the session itself carries on and blocks again if protection returns.
+   */
+  @Synchronized
+  fun markBroken(id: String, at: Long = System.currentTimeMillis()): Boolean {
+    val values = ContentValues().apply { put("broken_at", at) }
+    return writableDatabase.update("sessions", values, "id = ? AND broken_at IS NULL", arrayOf(id)) > 0
+  }
+
+  @Synchronized
+  fun getStreak(nowMillis: Long = System.currentTimeMillis()): Streak {
+    normalizeSessions()
+    val qualifying = mutableSetOf<Long>()
+    val broken = mutableSetOf<Long>()
+    readableDatabase.rawQuery(
+      "SELECT status, end_timestamp, duration_millis, broken_at FROM sessions WHERE status IN ('COMPLETED', 'STOPPED', 'ACTIVE')",
+      null,
+    ).use { cursor ->
+      while (cursor.moveToNext()) {
+        if (!cursor.isNull(3)) {
+          broken += StreakMath.dayOf(cursor.getLong(3))
+        } else if (
+          cursor.getString(0) == "COMPLETED" &&
+          cursor.getLong(2) >= StreakMath.MIN_MINUTES * 60_000L
+        ) {
+          qualifying += StreakMath.dayOf(cursor.getLong(1))
+        }
+      }
+    }
+    return StreakMath.compute(qualifying, broken, StreakMath.dayOf(nowMillis))
   }
 
   @Synchronized
@@ -473,6 +535,47 @@ class FocusDatabase private constructor(context: Context) :
     writableDatabase.delete("schedules", "id = ?", arrayOf(id))
   }
 
+  /**
+   * What the block screen shows: "book", "words" or "timer". Installs from before the
+   * word deck have no such setting, so it is derived from whether a book was chosen.
+   */
+  @Synchronized
+  fun getBlockMaterial(): String = getSetting(BLOCK_MATERIAL)?.takeIf { it in MATERIALS }
+    ?: if (getSelectedBook() != null) "book" else "timer"
+
+  @Synchronized
+  fun setBlockMaterial(material: String) {
+    require(material in MATERIALS) { "Unknown block screen material." }
+    setSetting(BLOCK_MATERIAL, material)
+  }
+
+  @Synchronized
+  fun getWordStates(): Map<String, WordState> = readableDatabase.rawQuery(
+    "SELECT word, box, due_at FROM word_progress",
+    null,
+  ).use { cursor ->
+    buildMap { while (cursor.moveToNext()) put(cursor.getString(0), WordState(cursor.getInt(1), cursor.getLong(2))) }
+  }
+
+  @Synchronized
+  fun saveWordReview(word: String, state: WordState, nowMillis: Long = System.currentTimeMillis()) {
+    // No UPSERT: it needs SQLite 3.24, and Android 7 ships 3.9.
+    val db = writableDatabase
+    db.execSQL("INSERT OR IGNORE INTO word_progress(word, box, due_at, reviews) VALUES (?, 0, 0, 0)", arrayOf(word))
+    db.execSQL(
+      "UPDATE word_progress SET box = ?, due_at = ?, reviews = reviews + 1 WHERE word = ?",
+      arrayOf(state.box, state.dueAt, word),
+    )
+    bumpDaily("words", nowMillis)
+  }
+
+  /** Words seen at least once, and words that have come back known several times. */
+  @Synchronized
+  fun getWordStats(): Pair<Int, Int> = readableDatabase.rawQuery(
+    "SELECT COUNT(*), COALESCE(SUM(CASE WHEN box >= ? THEN 1 ELSE 0 END), 0) FROM word_progress",
+    arrayOf(WordScheduler.LEARNED_BOX.toString()),
+  ).use { cursor -> if (cursor.moveToFirst()) cursor.getInt(0) to cursor.getInt(1) else 0 to 0 }
+
   /** The book the block screen opens, or null for the timer and quote instead. */
   @Synchronized
   fun getSelectedBook(): String? = getSetting(SELECTED_BOOK)?.takeIf { it.isNotBlank() }
@@ -498,7 +601,30 @@ class FocusDatabase private constructor(context: Context) :
 
   /** Counts a page turned forward for the first time, not one paged back over. */
   @Synchronized
-  fun recordPageRead() = setSetting(PAGES_READ, (getPagesRead() + 1).toString())
+  fun recordPageRead() {
+    setSetting(PAGES_READ, (getPagesRead() + 1).toString())
+    bumpDaily("pages")
+  }
+
+  /** Adds one to today's count in [column], creating today's row if needed. */
+  @Synchronized
+  fun bumpDaily(column: String, nowMillis: Long = System.currentTimeMillis()) {
+    require(column == "pages" || column == "words") { "Unknown progress column." }
+    val day = StreakMath.keyOf(StreakMath.dayOf(nowMillis))
+    writableDatabase.execSQL("INSERT OR IGNORE INTO daily_progress(day) VALUES (?)", arrayOf(day))
+    writableDatabase.execSQL("UPDATE daily_progress SET $column = $column + 1 WHERE day = ?", arrayOf(day))
+  }
+
+  /** Pages and words over the last [days] days including today. */
+  @Synchronized
+  fun getRecentProgress(days: Int, nowMillis: Long = System.currentTimeMillis()): Pair<Int, Int> {
+    val today = StreakMath.dayOf(nowMillis)
+    val first = StreakMath.keyOf(today - (days - 1))
+    return readableDatabase.rawQuery(
+      "SELECT COALESCE(SUM(pages), 0), COALESCE(SUM(words), 0) FROM daily_progress WHERE day >= ?",
+      arrayOf(first),
+    ).use { cursor -> if (cursor.moveToFirst()) cursor.getInt(0) to cursor.getInt(1) else 0 to 0 }
+  }
 
   @Synchronized
   fun setSelectedApps(apps: List<StoredApp>) =
@@ -531,6 +657,8 @@ class FocusDatabase private constructor(context: Context) :
       db.delete("sessions", null, null)
       db.delete("schedules", null, null)
       db.delete("settings", null, null)
+      db.delete("daily_progress", null, null)
+      db.delete("word_progress", null, null)
       db.setTransactionSuccessful()
     } finally {
       db.endTransaction()
@@ -549,6 +677,7 @@ class FocusDatabase private constructor(context: Context) :
     completedReason = cursor.getString(cursor.getColumnIndexOrThrow("completed_reason")),
     blockedAttempts = cursor.getInt(cursor.getColumnIndexOrThrow("attempts")),
     strict = cursor.getInt(cursor.getColumnIndexOrThrow("strict")) == 1,
+    brokenAt = cursor.getColumnIndexOrThrow("broken_at").let { if (cursor.isNull(it)) null else cursor.getLong(it) },
   )
 
   private fun currentBootCount(): Int = try {
@@ -559,7 +688,7 @@ class FocusDatabase private constructor(context: Context) :
 
   companion object {
     private const val DATABASE_NAME = "focus_guard.db"
-    private const val DATABASE_VERSION = 4
+    private const val DATABASE_VERSION = 5
     const val SELECTED_APPS = "selected_apps"
     const val ONBOARDING_COMPLETED = "onboarding_completed"
     const val THEME_PREFERENCE = "theme_preference"
@@ -567,6 +696,8 @@ class FocusDatabase private constructor(context: Context) :
     const val TILE_DURATION_MINUTES = "tile_duration_minutes"
     const val SELECTED_BOOK = "selected_book"
     const val PAGES_READ = "pages_read_total"
+    const val BLOCK_MATERIAL = "block_material"
+    private val MATERIALS = setOf("book", "words", "timer")
     private const val BOOK_PAGE_PREFIX = "book_page_"
     private const val BOOK_FURTHEST_PREFIX = "book_far_"
 

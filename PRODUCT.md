@@ -29,9 +29,10 @@ Strictness. A session can be made impossible to end early, enforcement survives 
 
 - App blocking via a narrowly scoped AccessibilityService (package names only, no screen content); strict sessions; schedules; Quick Settings tile; timer on lock screen and status bar via a foreground service; statistics; optional screen-time breakdown.
 - Bundled public-domain books: *O'tkan kunlar* (Abdulla Qodiriy) and *Kecha va kunduz* (Cho'lpon), from Wikisource.
-- Fully offline: no account, no backend, no analytics, no ads.
+- Offline: no account, no backend, no analytics, no ads. The one networked part is Google Play Billing for the Pro purchase (its library declares INTERNET); the app's own code makes no network calls.
 - The user can always disable the service or uninstall; the product never obstructs Android's own controls.
-- Undecided: monetization (a one-time Pro is the leading option); whether the black cat from the intro is a brand mascot.
+- Monetization: a one-time Pro purchase (`qoriqchi_pro`) unlocks strict sessions and strict schedules; everything else is free.
+- Undecided: whether the black cat from the intro is a brand mascot.
 
 ## Brand Commitments
 
@@ -48,7 +49,7 @@ Strictness. A session can be made impossible to end early, enforcement survives 
 1. The session holds. Firmness is the product; every feature is judged by whether it makes a session harder to escape without being dishonest about it.
 2. Tell the truth. Never show protection that is not actually running.
 3. Replace the urge, do not just refuse it — a page of a book beats a wall.
-4. Offline and private by default; nothing leaves the phone.
+4. Offline and private by default; the student's lists, sessions and progress never leave the phone.
 5. Built for a student's phone and language first: Uzbek, mid-range Android, real OEM behaviour.
 
 ## Accessibility & Inclusion

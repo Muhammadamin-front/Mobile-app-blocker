@@ -184,7 +184,8 @@ export function AppShell({isDark}: {isDark: boolean}) {
               <Text style={[styles.errorIconText, {color: theme.danger}]}>!</Text>
             </View>
             <Text style={[styles.errorTitle, {color: theme.text}]}>{t('That didn’t work')}</Text>
-            <Text style={[styles.errorBody, {color: theme.textMuted}]}>{error}</Text>
+            {/* Native errors are English keys too, so the known ones read in Uzbek. */}
+            <Text style={[styles.errorBody, {color: theme.textMuted}]}>{error ? t(error) : null}</Text>
             <PrimaryButton label={t('Got it')} onPress={clearError} theme={theme} />
           </View>
         </View>

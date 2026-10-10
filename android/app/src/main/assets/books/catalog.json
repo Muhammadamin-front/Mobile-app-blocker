@@ -18,5 +18,25 @@
     "source": "https://wikisource.org/wiki/Kecha_va_kunduz",
     "chapters": 20,
     "characters": 509572
+  },
+  {
+    "id": "turkiy-guliston",
+    "title": "Turkiy Guliston yoxud axloq",
+    "author": "Abdulla Avloniy",
+    "year": 1913,
+    "license": "Public domain: the author died in 1934 (Uzbek copyright lasts life + 50 years).",
+    "source": "https://wikisource.org/wiki/Turkiy_Guliston_yoxud_axloq",
+    "chapters": 26,
+    "characters": 43141
+  },
+  {
+    "id": "jadid-sheriyati",
+    "title": "Jadid she’riyati",
+    "author": "Cho‘lpon, Fitrat, Avloniy, Hamza, Qodiriy",
+    "year": 0,
+    "license": "Public domain: every poet in it died by 1938 (Uzbek copyright lasts life + 50 years).",
+    "source": "https://wikisource.org",
+    "chapters": 51,
+    "characters": 49310
   }
 ]

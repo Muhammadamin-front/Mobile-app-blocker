@@ -131,6 +131,9 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    // One non-consumable product, Pro. Play keeps the purchase; the app caches the
+    // entitlement locally so strict sessions work offline.
+    implementation("com.android.billingclient:billing:8.3.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core:1.6.1")

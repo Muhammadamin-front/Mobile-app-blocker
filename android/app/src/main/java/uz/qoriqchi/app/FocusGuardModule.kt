@@ -35,6 +35,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   private val database = FocusDatabase.get(context)
   private val usageReporter = UsageReporter(context)
   private val executor = Executors.newSingleThreadExecutor()
+  private val billing by lazy { ProBilling(context) }
 
   override fun getName(): String = "FocusGuard"
 
@@ -69,6 +70,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
 
   override fun invalidate() {
     executor.shutdownNow()
+    billing.close()
     super.invalidate()
   }
 
@@ -106,6 +108,9 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   @ReactMethod
   fun getPermissionStatus(promise: Promise) {
     val enabled = isAccessibilityServiceEnabled()
+    // The app polls this during a session, which makes it a second place to notice
+    // protection being switched off when the foreground service could not run.
+    executor.execute { SessionIntegrity.check(context) }
     promise.resolve(Arguments.createMap().apply {
       putBoolean("accessibilityEnabled", enabled)
       // Usage access is optional: blocking is ready without it.
@@ -187,6 +192,8 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
       check(isAccessibilityServiceEnabled()) {
         "Enable the FocusGuard accessibility service before starting a session."
       }
+      // Checked here as well as in the UI: the entitlement is the rule, not the button.
+      check(!strict || ProStore.isUnlocked(context)) { "Strict sessions are part of Qoriqchi Pro." }
       val excluded = criticalPackages()
       val apps = requested
         .filterNot { it.packageName in excluded }
@@ -240,6 +247,17 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
 
   /** Drops apps the user has uninstalled since choosing them so the list never goes stale. */
   @ReactMethod
+  fun getStreak(promise: Promise) = background(promise) {
+    val streak = database.getStreak()
+    Arguments.createMap().apply {
+      putInt("current", streak.current)
+      putInt("best", streak.best)
+      putBoolean("todayDone", streak.todayDone)
+      putInt("minMinutes", StreakMath.MIN_MINUTES)
+    }
+  }
+
+  @ReactMethod
   fun getTrends(range: String?, promise: Promise) = background(promise) {
     database.getTrends(range).toWritableMap()
   }
@@ -247,8 +265,15 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   @ReactMethod
   fun getBooks(promise: Promise) = background(promise) {
     val selected = database.getSelectedBook()
+    val (seen, learned) = database.getWordStats()
     Arguments.createMap().apply {
       putString("selected", selected)
+      putString("material", database.getBlockMaterial())
+      putMap("words", Arguments.createMap().apply {
+        putInt("deckSize", WordDeck.words(context).size)
+        putInt("seen", seen)
+        putInt("learned", learned)
+      })
       putInt("pagesRead", database.getPagesRead())
       putArray("books", Arguments.createArray().apply {
         BookLibrary.catalog(context).forEach { book ->
@@ -271,7 +296,126 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
   fun selectBook(id: String?, promise: Promise) = background(promise) {
     require(id == null || BookLibrary.book(context, id) != null) { "Unknown book." }
     database.setSelectedBook(id)
+    database.setBlockMaterial(if (id == null) "timer" else "book")
     null
+  }
+
+  @ReactMethod
+  fun selectWords(promise: Promise) = background(promise) {
+    database.setBlockMaterial("words")
+    null
+  }
+
+  /** The cached entitlement right away; Play's answer, when it comes, refreshes it. */
+  @ReactMethod
+  fun getPro(promise: Promise) {
+    billing.refresh { status -> promise.resolve(status.toWritableMap()) }
+  }
+
+  @ReactMethod
+  fun buyPro(promise: Promise) {
+    val activity = context.currentActivity
+    billing.refresh {
+      billing.buy(activity) { result ->
+        result.fold(
+          onSuccess = { promise.resolve(it.toWritableMap()) },
+          onFailure = { promise.reject("PRO_PURCHASE_FAILED", it.message ?: "The purchase did not go through.", it) },
+        )
+      }
+    }
+  }
+
+  @ReactMethod
+  fun getExam(promise: Promise) = background(promise) {
+    ExamCountdown.read(database)?.let { exam ->
+      Arguments.createMap().apply {
+        putString("kind", exam.kind)
+        putString("label", exam.label)
+        putString("date", exam.date)
+      }
+    }
+  }
+
+  /** Null clears it. */
+  @ReactMethod
+  fun setExam(input: ReadableMap?, promise: Promise) {
+    val exam = input?.let {
+      StoredExam(
+        kind = it.requireString("kind"),
+        label = if (it.hasKey("label") && !it.isNull("label")) it.getString("label").orEmpty() else "",
+        date = it.requireString("date"),
+      )
+    }
+    background(promise) {
+      ExamCountdown.write(database, exam)
+      null
+    }
+  }
+
+  /** Android's own date picker, so no date library ships in the app. Resolves yyyy-mm-dd or null. */
+  @ReactMethod
+  fun pickDate(initial: String?, promise: Promise) {
+    val activity = context.currentActivity
+    if (activity == null) {
+      promise.resolve(null)
+      return
+    }
+    UiThreadUtil.runOnUiThread {
+      val start = java.util.Calendar.getInstance()
+      initial?.let(ExamCountdown::dayOfDate)?.let { day ->
+        start.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        start.timeInMillis = day * 86_400_000L
+      }
+      var answered = false
+      val dialog = android.app.DatePickerDialog(
+        activity,
+        R.style.QoriqchiDatePicker,
+        { _, year, month, day ->
+          answered = true
+          promise.resolve(String.format(Locale.US, "%04d-%02d-%02d", year, month + 1, day))
+        },
+        start.get(java.util.Calendar.YEAR),
+        start.get(java.util.Calendar.MONTH),
+        start.get(java.util.Calendar.DAY_OF_MONTH),
+      )
+      dialog.datePicker.minDate = System.currentTimeMillis() - 1_000L
+      dialog.setOnDismissListener { if (!answered) promise.resolve(null) }
+      dialog.show()
+    }
+  }
+
+  /**
+   * Draws this week's card and opens Android's share sheet with it — straight into
+   * Telegram when asked and installed, the chooser otherwise. Nothing leaves the phone
+   * unless the person picks where it goes.
+   */
+  @ReactMethod
+  fun shareProgress(target: String?, promise: Promise) = background(promise) {
+    val summary = ShareCard.summarize(context)
+    val file = ShareCard.render(context, summary)
+    val uri = androidx.core.content.FileProvider.getUriForFile(context, context.packageName + ".share", file)
+    val send = Intent(Intent.ACTION_SEND).apply {
+      type = "image/png"
+      putExtra(Intent.EXTRA_STREAM, uri)
+      putExtra(Intent.EXTRA_TEXT, ShareCard.caption(context, summary))
+      addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    val launcher = context.currentActivity ?: context
+    val telegram = if (target == "telegram") {
+      TELEGRAM_PACKAGES.firstNotNullOfOrNull { pkg ->
+        Intent(send).setPackage(pkg).takeIf { it.resolveActivity(context.packageManager) != null }
+      }
+    } else null
+    UiThreadUtil.runOnUiThread {
+      runCatching {
+        launcher.startActivity(
+          (telegram ?: Intent.createChooser(send, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+      }.onFailure {
+        launcher.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+      }
+    }
+    telegram != null
   }
 
   @ReactMethod
@@ -297,6 +441,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
       enabled = !input.hasKey("enabled") || input.isNull("enabled") || input.getBoolean("enabled"),
     )
     background(promise) {
+      check(!schedule.strict || ProStore.isUnlocked(context)) { "Strict schedules are part of Qoriqchi Pro." }
       database.saveSchedule(schedule)
       FocusScheduler.sync(context)
       null
@@ -397,6 +542,11 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     null
   }
 
+  private companion object {
+    /** Telegram and its official alternative clients. */
+    val TELEGRAM_PACKAGES = listOf("org.telegram.messenger", "org.telegram.messenger.web", "org.thunderdog.challegram")
+  }
+
   private fun isAccessibilityServiceEnabled(): Boolean {
     val manager = context.getSystemService(AccessibilityManager::class.java)
     return manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
@@ -495,6 +645,13 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     })
   }
 
+  private fun ProStatus.toWritableMap(): WritableMap = Arguments.createMap().apply {
+    putBoolean("unlocked", unlocked)
+    putBoolean("available", available)
+    if (price != null) putString("price", price) else putNull("price")
+    putBoolean("pending", pending)
+  }
+
   private fun StoredSchedule.toWritableMap(): WritableMap = Arguments.createMap().apply {
     putString("id", id)
     putString("label", label)
@@ -540,6 +697,7 @@ class FocusGuardModule(private val context: ReactApplicationContext) :
     completedReason?.let { putString("completedReason", it) }
     putInt("blockedAttempts", blockedAttempts)
     putBoolean("strict", strict)
+    brokenAt?.let { putDouble("brokenAt", it.toDouble()) }
     putDouble("remainingMillis", database.remainingMillis(this@toWritableMap).toDouble())
     putDouble("startsInMillis", database.startsInMillis(this@toWritableMap).toDouble())
   }

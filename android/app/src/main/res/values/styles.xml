@@ -15,4 +15,16 @@
         <item name="android:windowNoTitle">true</item>
     </style>
 
+    <!-- The exam date picker, in the app's navy and yellow rather than stock teal. -->
+    <style name="QoriqchiDatePicker" parent="android:Theme.Material.Dialog">
+        <item name="android:colorAccent">#FFC400</item>
+        <item name="android:colorBackground">#0B1E36</item>
+        <item name="android:textColorPrimary">#FFFFFF</item>
+        <item name="android:datePickerStyle">@style/QoriqchiDatePickerStyle</item>
+    </style>
+
+    <style name="QoriqchiDatePickerStyle" parent="android:Widget.Material.DatePicker">
+        <item name="android:headerBackground">#071426</item>
+    </style>
+
 </resources>

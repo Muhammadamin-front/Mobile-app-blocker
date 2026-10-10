@@ -4,8 +4,12 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.database.ContentObserver
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 
 /**
@@ -16,11 +20,40 @@ import android.util.Log
  * A foreground service is the one thing those task killers leave alone.
  *
  * It owns no logic of its own: the notification is FocusNotifier's, the session is
- * the database's, and it stops itself the moment there is nothing to protect.
+ * the database's, and it stops itself the moment there is nothing to protect. While it
+ * runs it also watches the Accessibility setting, so switching protection off during
+ * a session is recorded the moment it happens (see SessionIntegrity).
  */
 class FocusSessionService : Service() {
 
+  private val settingsObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+    override fun onChange(selfChange: Boolean) {
+      Thread { SessionIntegrity.check(this@FocusSessionService) }.start()
+    }
+  }
+
   override fun onBind(intent: Intent?): IBinder? = null
+
+  override fun onCreate() {
+    super.onCreate()
+    runCatching {
+      contentResolver.registerContentObserver(
+        Settings.Secure.getUriFor(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES),
+        false,
+        settingsObserver,
+      )
+      contentResolver.registerContentObserver(
+        Settings.Secure.getUriFor(Settings.Secure.ACCESSIBILITY_ENABLED),
+        false,
+        settingsObserver,
+      )
+    }
+  }
+
+  override fun onDestroy() {
+    runCatching { contentResolver.unregisterContentObserver(settingsObserver) }
+    super.onDestroy()
+  }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     val notification = try {

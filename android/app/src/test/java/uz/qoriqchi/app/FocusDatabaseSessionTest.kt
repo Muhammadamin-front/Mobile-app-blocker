@@ -170,4 +170,45 @@ class FocusDatabaseSessionTest {
     assertEquals(10 * 60, saved.startMinute)
     assertEquals(false, saved.enabled)
   }
+
+  @Test
+  fun aBrokenSessionKeepsItsFirstBreakAndStillBlocks() {
+    val session = start()
+
+    assertTrue(database.markBroken(session.id, at = 1_000L))
+    // A second report does not move the moment it happened.
+    assertEquals(false, database.markBroken(session.id, at = 2_000L))
+
+    val current = database.getCurrentSession()
+    assertEquals(1_000L, current?.brokenAt)
+    assertNotNull(database.getEnforceableSession())
+  }
+
+  @Test
+  fun aBrokenSessionTodayZeroesTheStreak() {
+    val session = start(minutes = 30)
+    database.markBroken(session.id)
+
+    assertEquals(0, database.getStreak().current)
+  }
+
+  @Test
+  fun aWordReviewedTwiceKeepsOneRowAndCountsBothTimesToday() {
+    val now = System.currentTimeMillis()
+    database.saveWordReview("budget", WordScheduler.known(null, now), now)
+    database.saveWordReview("budget", WordScheduler.known(WordState(1, now), now), now)
+
+    assertEquals(2, database.getWordStates().getValue("budget").box)
+    assertEquals(1 to 0, database.getWordStats())
+    assertEquals(0 to 2, database.getRecentProgress(1, now))
+  }
+
+  @Test
+  fun blockMaterialFollowsAnOlderBookChoiceUntilOneIsMade() {
+    assertEquals("timer", database.getBlockMaterial())
+    database.setSelectedBook("otkan-kunlar")
+    assertEquals("book", database.getBlockMaterial())
+    database.setBlockMaterial("words")
+    assertEquals("words", database.getBlockMaterial())
+  }
 }

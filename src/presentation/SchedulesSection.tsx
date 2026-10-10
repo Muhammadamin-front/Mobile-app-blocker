@@ -9,7 +9,10 @@ import {
   EVERY_DAY,
   formatStartMinute,
   hasDay,
+  MON_TO_SAT,
+  scheduleFromPreset,
   shiftMinute,
+  STUDY_PRESETS,
   toggleDay,
   WEEKDAYS,
 } from '../domain/schedules';
@@ -17,8 +20,9 @@ import {formatMinutes} from '../domain/session';
 import {useAppStore} from '../state/AppStore';
 import {radii, spacing, Theme} from '../theme/theme';
 import {Card, PrimaryButton, SectionTitle} from './components';
+import {ProPill, ProSheet} from './ProSheet';
 
-const DURATIONS = [15, 30, 60, 120];
+const DURATIONS = [30, 60, 120, 180, 300];
 
 /**
  * Schedules reuse the block list rather than carrying their own, so setting one up
@@ -26,8 +30,17 @@ const DURATIONS = [15, 30, 60, 120];
  * once, which is what people mean by "my distractions".
  */
 export function SchedulesSection({theme}: {theme: Theme}) {
-  const {schedules, saveSchedule, deleteSchedule, selectedApps, t} = useAppStore();
+  const {schedules, saveSchedule, deleteSchedule, selectedApps, pro, t} = useAppStore();
   const [draft, setDraft] = useState<FocusSchedule | null>(null);
+  const [proOpen, setProOpen] = useState(false);
+
+  const toggleStrict = () => {
+    if (!pro.unlocked) {
+      setProOpen(true);
+      return;
+    }
+    setDraft(current => (current ? {...current, strict: !current.strict} : current));
+  };
 
   const close = () => setDraft(null);
 
@@ -61,6 +74,11 @@ export function SchedulesSection({theme}: {theme: Theme}) {
     );
   };
 
+  // A preset already saved under its name is not offered twice.
+  const presets = STUDY_PRESETS.filter(
+    preset => !schedules.some(schedule => schedule.label === t(preset.label)),
+  );
+
   return (
     <View style={styles.block}>
       <View style={styles.header}>
@@ -69,6 +87,32 @@ export function SchedulesSection({theme}: {theme: Theme}) {
           <Text style={[styles.add, {color: theme.primary}]}>{t('Add')}</Text>
         </Pressable>
       </View>
+
+      {presets.length ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.presets}>
+          {presets.map(preset => (
+            <Pressable
+              key={preset.label}
+              accessibilityRole="button"
+              accessibilityHint={t('Adds this schedule now. You can edit it after.')}
+              onPress={() => saveSchedule(scheduleFromPreset(preset, t(preset.label)))}
+              style={({pressed}) => [
+                styles.presetChip,
+                {borderColor: theme.borderStrong, backgroundColor: theme.surface},
+                pressed && styles.pressed,
+              ]}>
+              <Text style={[styles.presetTitle, {color: theme.text}]}>+ {t(preset.label)}</Text>
+              <Text style={[styles.presetMeta, {color: theme.textMuted}]}>
+                {describeDays(preset.days, t)} · {formatStartMinute(preset.startMinute)} ·{' '}
+                {formatMinutes(preset.durationMinutes, t)}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
 
       {schedules.length ? (
         <Card theme={theme} style={styles.list}>
@@ -82,6 +126,9 @@ export function SchedulesSection({theme}: {theme: Theme}) {
                 index ? {borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border} : null,
               ]}>
               <View style={styles.rowCopy}>
+                {schedule.label ? (
+                  <Text style={[styles.rowLabel, {color: theme.textMuted}]}>{schedule.label}</Text>
+                ) : null}
                 <Text style={[styles.rowTime, {color: schedule.enabled ? theme.text : theme.textSubtle}]}>
                   {formatStartMinute(schedule.startMinute)}
                 </Text>
@@ -182,6 +229,13 @@ export function SchedulesSection({theme}: {theme: Theme}) {
                 <Pressable
                   hitSlop={6}
                   onPress={() =>
+                    setDraft(current => (current ? {...current, days: MON_TO_SAT} : current))
+                  }>
+                  <Text style={[styles.preset, {color: theme.primary}]}>{t('Mon–Sat')}</Text>
+                </Pressable>
+                <Pressable
+                  hitSlop={6}
+                  onPress={() =>
                     setDraft(current => (current ? {...current, days: EVERY_DAY} : current))
                   }>
                   <Text style={[styles.preset, {color: theme.primary}]}>{t('Every day')}</Text>
@@ -253,9 +307,7 @@ export function SchedulesSection({theme}: {theme: Theme}) {
               <Pressable
                 accessibilityRole="switch"
                 accessibilityState={{checked: draft?.strict ?? false}}
-                onPress={() =>
-                  setDraft(current => (current ? {...current, strict: !current.strict} : current))
-                }
+                onPress={toggleStrict}
                 style={[
                   styles.strict,
                   {
@@ -278,6 +330,7 @@ export function SchedulesSection({theme}: {theme: Theme}) {
                 <Text style={[styles.strictText, {color: theme.text}]}>
                   {t('Start it as a strict session')}
                 </Text>
+                {pro.unlocked ? null : <ProPill theme={theme} />}
               </Pressable>
 
               <View style={styles.actions}>
@@ -300,13 +353,21 @@ export function SchedulesSection({theme}: {theme: Theme}) {
             </ScrollView>
           </View>
         </View>
+        <ProSheet
+          theme={theme}
+          visible={proOpen}
+          onClose={() => setProOpen(false)}
+          onUnlocked={() =>
+            setDraft(current => (current ? {...current, strict: true} : current))
+          }
+        />
       </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  block: {marginBottom: spacing.xl},
+  block: {marginTop: spacing.xl, marginBottom: spacing.xl},
   header: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
   addTap: {paddingBottom: spacing.sm, paddingLeft: spacing.sm},
   add: {fontSize: 13, fontWeight: '700'},
@@ -318,6 +379,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   rowCopy: {flex: 1},
+  rowLabel: {fontSize: 11.5, fontWeight: '700', marginBottom: 1},
+  presets: {gap: spacing.xs, paddingBottom: spacing.sm},
+  presetChip: {borderWidth: 1, borderRadius: radii.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md},
+  presetTitle: {fontSize: 13.5, fontWeight: '800'},
+  presetMeta: {fontSize: 11.5, marginTop: 2},
+  pressed: {opacity: 0.72},
   rowTime: {fontSize: 20, fontWeight: '700', fontVariant: ['tabular-nums']},
   rowDays: {fontSize: 12.5, marginTop: 2},
   switch: {width: 46, height: 28, borderRadius: radii.pill, borderWidth: 1, padding: 3, justifyContent: 'center'},

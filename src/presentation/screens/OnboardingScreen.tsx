@@ -9,7 +9,7 @@ import {BrandGlyph, BrandMark, Card, PrimaryButton, StatusBadge} from '../compon
 
 const trustPoints = [
   {glyph: '⌁', title: 'Works offline', body: 'No account or connection'},
-  {glyph: '□', title: 'Stays local', body: 'Data never leaves your phone'},
+  {glyph: '□', title: 'Stays local', body: 'Your lists and sessions stay on this phone'},
   {glyph: '◉', title: 'You stay in control', body: 'Disable access at any time'},
 ];
 

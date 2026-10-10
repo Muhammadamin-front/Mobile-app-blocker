@@ -25,6 +25,8 @@ export function HistoryScreen({theme}: {theme: Theme}) {
     trendsLoading,
     openUsageAccessSettings,
     setTrendRange,
+    streak,
+    shareProgress,
     t,
   } = useAppStore();
   const topAttempts = trends.topApps;
@@ -82,13 +84,15 @@ export function HistoryScreen({theme}: {theme: Theme}) {
       <Card theme={theme} elevated style={styles.heroCard}>
         <View style={styles.heroTop}>
           <View>
-            <Text style={[styles.heroLabel, {color: theme.textMuted}]}>{range.caption.toUpperCase()}</Text>
+            <Text style={[styles.heroLabel, {color: theme.textMuted}]}>{t(range.caption).toUpperCase()}</Text>
             <Text style={[styles.heroValue, {color: theme.text}]}>{formatFocusHm(trends.totalFocusMillis)}</Text>
           </View>
-          <View style={[styles.heroIcon, {backgroundColor: theme.primarySoft}]}>
-            <View style={[styles.heroRing, {borderColor: theme.primary}]}>
-              <View style={[styles.heroDot, {backgroundColor: theme.primary}]} />
-            </View>
+          <View
+            accessible
+            accessibilityLabel={t('{n}-day streak', {n: streak.current})}
+            style={[styles.streakBox, {backgroundColor: theme.primarySoft, borderColor: theme.borderStrong}]}>
+            <Text style={[styles.streakValue, {color: theme.primary}]}>{streak.current}</Text>
+            <Text style={[styles.streakLabel, {color: theme.textMuted}]}>{t('day streak')}</Text>
           </View>
         </View>
         <View style={[styles.heroDivider, {backgroundColor: theme.border}]} />
@@ -104,9 +108,28 @@ export function HistoryScreen({theme}: {theme: Theme}) {
           </View>
         </View>
         <Text style={[styles.heroFootnote, {color: theme.textMuted}]}>
-          {formatFocusHm(stats.totalFocusMillis)} protected all time
+          {t('{time} protected all time', {time: formatFocusHm(stats.totalFocusMillis)})}
+          {' · '}
+          {streak.todayDone
+            ? t('Today counts. Best streak: {n} days.', {n: streak.best})
+            : t('Finish a {m}-minute session today to keep the streak.', {m: streak.minMinutes})}
         </Text>
       </Card>
+
+      <View style={styles.shareRow}>
+        <View style={styles.shareMain}>
+          <PrimaryButton
+            label={t('Share on Telegram')}
+            onPress={() => shareProgress('telegram')}
+            theme={theme}
+            variant="secondary"
+          />
+        </View>
+        <PrimaryButton label={t('More')} onPress={() => shareProgress('any')} theme={theme} variant="ghost" />
+      </View>
+      <Text style={[styles.shareNote, {color: theme.textSubtle}]}>
+        {t('A picture of this week: focus time, streak, pages and words. Nothing else about you.')}
+      </Text>
 
       <View style={styles.sectionBlock}>
         <SectionTitle theme={theme}>{t('Focus time')}</SectionTitle>
@@ -236,10 +259,11 @@ export function HistoryScreen({theme}: {theme: Theme}) {
         <SectionTitle theme={theme} detail={t('{n} total', {n: history.length})}>{t('Recent sessions')}</SectionTitle>
         {history.length ? history.map(session => {
           const durationMinutes = Math.max(1, Math.round((session.endTimestamp - session.startTimestamp) / 60_000));
-          const completed = session.status === 'COMPLETED';
+          const broken = session.brokenAt !== undefined;
+          const completed = session.status === 'COMPLETED' && !broken;
           return (
             <Card key={session.id} theme={theme} style={styles.sessionCard}>
-              <View style={[styles.sessionRail, {backgroundColor: completed ? theme.success : theme.textSubtle}]} />
+              <View style={[styles.sessionRail, {backgroundColor: broken ? theme.danger : completed ? theme.success : theme.textSubtle}]} />
               <View style={styles.sessionContent}>
                 <View style={styles.sessionTop}>
                   <View>
@@ -251,9 +275,9 @@ export function HistoryScreen({theme}: {theme: Theme}) {
                     </Text>
                   </View>
                   <StatusBadge
-                    label={completed ? t('Completed') : t('Ended early')}
+                    label={broken ? t('Broken') : completed ? t('Completed') : t('Ended early')}
                     theme={theme}
-                    tone={completed ? 'success' : 'neutral'}
+                    tone={broken ? 'danger' : completed ? 'success' : 'neutral'}
                   />
                 </View>
                 <Text style={[styles.sessionDuration, {color: theme.text}]}>{formatMinutes(durationMinutes, t)}</Text>
@@ -315,9 +339,12 @@ const styles = StyleSheet.create({
   heroTop: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'},
   heroLabel: {fontSize: 10, fontWeight: '800', letterSpacing: 1.5},
   heroValue: {fontSize: 38, fontWeight: '800', letterSpacing: -1.4, marginTop: 6},
-  heroIcon: {width: 62, height: 62, borderRadius: 21, alignItems: 'center', justifyContent: 'center'},
-  heroRing: {width: 34, height: 34, borderRadius: 17, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center'},
-  heroDot: {width: 10, height: 10, borderRadius: 5},
+  shareRow: {flexDirection: 'row', gap: spacing.xs, marginTop: -spacing.xs},
+  shareMain: {flex: 1},
+  shareNote: {fontSize: 11.5, lineHeight: 16, marginTop: spacing.xs, marginBottom: spacing.lg},
+  streakBox: {minWidth: 72, borderRadius: 21, borderWidth: 1, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, alignItems: 'center'},
+  streakValue: {fontSize: 28, fontWeight: '900', fontVariant: ['tabular-nums']},
+  streakLabel: {fontSize: 10, fontWeight: '700', marginTop: 1},
   heroDivider: {height: 1, marginVertical: spacing.lg},
   metricRow: {flexDirection: 'row', alignItems: 'center'},
   metric: {flex: 1},

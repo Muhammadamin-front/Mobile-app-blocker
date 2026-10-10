@@ -95,6 +95,8 @@ object FocusNotifier {
     val count = session.blockedApps.size
     val subtitle = if (scheduled) {
       strings.getString(R.string.notification_starts_soon)
+    } else if (session.brokenAt != null) {
+      strings.getString(R.string.notification_broken)
     } else if (count == 1) {
       strings.getString(R.string.notification_blocked_apps, count)
     } else {
