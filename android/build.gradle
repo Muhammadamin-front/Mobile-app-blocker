@@ -18,4 +18,13 @@ buildscript {
     }
 }
 
+// The main development Mac syncs Desktop to iCloud, and iCloud syncing tens of
+// thousands of build files leaves "values 2"-style copies that stall Gradle and
+// tsc. iCloud skips anything named *.nosync. The root project keeps "build"
+// because React Native's autolinking writes there by a fixed path. This must come
+// before the rootproject plugin, which evaluates :app as soon as it is applied.
+subprojects {
+    layout.buildDirectory = file("build.nosync")
+}
+
 apply plugin: "com.facebook.react.rootproject"

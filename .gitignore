@@ -77,3 +77,7 @@ yarn-error.log
 # Design tooling installed per-machine (npx impeccable install)
 .claude/skills/
 .claude/agents/
+
+# Build output kept out of iCloud (see android/build.gradle)
+*.nosync
+scripts/.wikisource-cache/
